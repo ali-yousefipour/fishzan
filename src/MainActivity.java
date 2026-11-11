@@ -11,12 +11,11 @@ import android.net.Uri;
 import java.util.Locale;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.print.PrintAttributes;
-import android.print.PrintManager;
 import android.text.Editable;
 import android.text.InputFilter;
 import android.text.InputType;
@@ -41,7 +40,11 @@ public final class MainActivity extends Activity {
     private EditText amount, date, tracking, reference;
     private ImageView preview;
     private TextView status, trackingLabel, referenceLabel;
-    private Button print;
+    private Button print, saveReceipt, savePdf;
+    private ReceiptArchive archive;
+    private AssetLabelDialog assetDialog;
+    private File pendingPdf;
+    private Typeface homa;
     private Bitmap receipt;
     private TemplateLayout activeLayout;
     private LayoutEditor layoutEditor;
@@ -53,9 +56,15 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        homa = Typeface.createFromAsset(getAssets(), "templates/fanous/BHoma.ttf");
+        archive = new ReceiptArchive(this);
+        if (state != null) {
+            String pending = state.getString("pendingPdf", "");
+            if (pending.matches("fishzan-[0-9]+[.]pdf")) pendingPdf = new File(getCacheDir(), pending);
+        }
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(0xfff4f6f4);
+        scroll.setBackgroundColor(0xfff2f5fb);
         LinearLayout layout = new LinearLayout(this);
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
@@ -66,13 +75,17 @@ public final class MainActivity extends Activity {
         LinearLayout header = row(layout);
         header.setGravity(android.view.Gravity.CENTER_VERTICAL);
         ImageView icon = new ImageView(this);
-        int iconId = getResources().getIdentifier("fishzan", "drawable", getPackageName());
+        int iconId = getResources().getIdentifier("fishzan_canva", "drawable", getPackageName());
         icon.setImageResource(iconId);
-        header.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        header.addView(icon, new LinearLayout.LayoutParams(dp(52), dp(52)));
         TextView title = label(header, "فیش زن");
         title.setPadding(dp(12), 0, dp(12), 0);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setTextSize(27);
+        title.setTypeface(homa, Typeface.BOLD);
+        title.setTextSize(30);
+        LinearLayout tools = row(layout);
+        tools.setPadding(0, dp(12), 0, 0);
+        button(tools, "بایگانی فیش‌ها", this::openArchive);
+        button(tools, "چاپ شماره اموال", this::openAssetLabel);
         LinearLayout templatesPanel = panel(layout, "قالب فیش");
         picker = new Spinner(this);
         picker.setMinimumHeight(dp(48));
@@ -105,11 +118,14 @@ public final class MainActivity extends Activity {
         tracking = input(form, "", InputType.TYPE_CLASS_NUMBER, 40);
         referenceLabel = label(form, "شمارهٔ مرجع");
         reference = input(form, "", InputType.TYPE_CLASS_NUMBER, 40);
-        print = button(layout, "چاپ PDF", this::print);
+        LinearLayout files = row(form);
+        saveReceipt = button(files, "ثبت در بایگانی", this::archiveCurrent);
+        savePdf = button(files, "ذخیرهٔ PDF", () -> exportPdf(currentPage(), currentTitle()));
+        print = button(layout, "چاپ فیش", this::print);
         print.setTextColor(Color.WHITE);
         print.setBackgroundTintList(new ColorStateList(
             new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
-            new int[]{0xff697670, 0xff246456}));
+            new int[]{0xff5e6a7e, 0xff183b75}));
         status = label(layout, "");
         LinearLayout previewPanel = panel(layout, "پیش‌نمایش");
         status.setTextColor(0xffa52714);
@@ -120,6 +136,9 @@ public final class MainActivity extends Activity {
         preview.setOnClickListener(view -> editLayout());
         preview.setContentDescription("پیش‌نمایش فیش، برای ویرایش چیدمان ضربه بزنید");
         previewPanel.addView(preview, new LinearLayout.LayoutParams(-1, -2));
+        TextView credit = label(layout, "سازنده: علی یوسفی پور");
+        credit.setGravity(android.view.Gravity.CENTER);
+        credit.setPadding(0, dp(16), 0, dp(8));
 
         try {
             String[] assets = getAssets().list("templates");
@@ -160,7 +179,7 @@ public final class MainActivity extends Activity {
         date.addTextChangedListener(watcher);
         tracking.addTextChangedListener(watcher);
         reference.addTextChangedListener(watcher);
-        print.setEnabled(false);
+        updateDocumentActions(false);
         if (!templates.isEmpty()) {
             int index = state == null ? 0 : Math.min(state.getInt("selection"), templates.size() - 1);
             if (state != null) {
@@ -181,10 +200,15 @@ public final class MainActivity extends Activity {
                     state.getString("layoutNote", templateNote()));
             }
         }
+        if (state != null && state.getBundle("assetDraft") != null) {
+            openAssetLabel(state.getBundle("assetDraft"));
+        }
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
+        if (pendingPdf != null) state.putString("pendingPdf", pendingPdf.getName());
+        if (assetDialog != null) state.putBundle("assetDraft", assetDialog.draft());
         state.putInt("selection", Math.max(0, selection));
         if (selection >= 0) state.putString("selectedTemplate", templateIds.get(selection));
         if (layoutEditor != null) {
@@ -210,7 +234,7 @@ public final class MainActivity extends Activity {
         GradientDrawable surface = new GradientDrawable();
         surface.setColor(Color.WHITE);
         surface.setCornerRadius(dp(14));
-        surface.setStroke(dp(1), 0xffdce5df);
+        surface.setStroke(dp(1), 0xffd6e0ee);
         panel.setBackground(surface);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
         params.topMargin = dp(14);
@@ -224,14 +248,16 @@ public final class MainActivity extends Activity {
     private TextView label(LinearLayout layout, String caption) {
         TextView text = new TextView(this);
         text.setText(caption);
-        text.setTextSize(15);
-        text.setTextColor(0xff173f39);
+        text.setTypeface(homa);
+        text.setTextSize(16);
+        text.setTextColor(0xff10284c);
         layout.addView(text);
         return text;
     }
 
     private EditText input(LinearLayout layout, String hint, int type, int length) {
         EditText field = new EditText(this);
+        field.setTypeface(homa);
         field.setSingleLine(true);
         field.setInputType(type);
         if (type == InputType.TYPE_CLASS_NUMBER) {
@@ -246,7 +272,7 @@ public final class MainActivity extends Activity {
         GradientDrawable background = new GradientDrawable();
         background.setColor(Color.WHITE);
         background.setCornerRadius(dp(10));
-        background.setStroke(dp(1), 0xffa3b5aa);
+        background.setStroke(dp(1), 0xff9aabc4);
         field.setBackground(background);
         layout.addView(field, new LinearLayout.LayoutParams(-1, -2));
         return field;
@@ -254,6 +280,7 @@ public final class MainActivity extends Activity {
 
     private Button button(LinearLayout layout, String caption, Runnable action) {
         Button button = new Button(this);
+        button.setTypeface(homa);
         button.setText(caption);
         button.setOnClickListener(view -> action.run());
         button.setMinHeight(dp(48));
@@ -547,20 +574,19 @@ public final class MainActivity extends Activity {
         }
         preview.setImageBitmap(receipt);
         status.setText(warning);
-        print.setEnabled(validAmount && validDate && validTrace && validRef);
+        updateDocumentActions(validAmount && validDate && validTrace && validRef);
     }
 
-    private void print() {
+    private void updateDocumentActions(boolean enabled) {
+        print.setEnabled(enabled);
+        saveReceipt.setEnabled(enabled);
+        savePdf.setEnabled(enabled);
+    }
+
+    private String currentTitle() { return "فیش " + names.get(selection); }
+
+    private PrintPage currentPage() {
         Template template = templates.get(selection);
-        PrintManager manager = (PrintManager) getSystemService(PRINT_SERVICE);
-        PrintAttributes attributes = new PrintAttributes.Builder()
-            .setMediaSize(new PrintAttributes.MediaSize("receipt", template.name,
-                (int) Math.round(template.widthMm / 25.4 * 1000),
-                (int) Math.round(template.heightMm / 25.4 * 1000)))
-            .setColorMode(PrintAttributes.COLOR_MODE_MONOCHROME)
-            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
-            .build();
-        String filename = "فیش " + names.get(selection).replaceAll("[^\\p{L}\\p{N} _-]", " ") + ".pdf";
         String money = ascii(amount.getText().toString());
         String timestamp = date.getText().toString();
         String trace = ascii(tracking.getText().toString());
@@ -568,8 +594,186 @@ public final class MainActivity extends Activity {
         TemplateLayout layout = activeLayout;
         String note = templateNote();
         JSONArray labels = templateLabels();
-        manager.print(filename, new ReceiptPrint(filename, template,
-            canvas -> template.drawPage(canvas, money, timestamp, trace, ref, layout, note, labels, null)), attributes);
+        return new PrintPage(template.widthMm, template.heightMm, template.paperWidth, template.paperHeight,
+            canvas -> template.drawPage(canvas, money, timestamp, trace, ref, layout, note, labels, null));
+    }
+
+    private void print() {
+        PrintPage page = currentPage();
+        String title = currentTitle();
+        new AlertDialog.Builder(this).setTitle("روش چاپ")
+            .setItems(new String[]{"چاپ با RawBT برای Zebra ZQ110", "چاپ PDF با سرویس اندروید"},
+                (dialog, which) -> {
+                    if (which == 0) sendRawBt(page);
+                    else page.androidPrint(this, filename(title));
+                }).show();
+    }
+
+    private String filename(String title) {
+        String safe = title.replaceAll("[^\\p{L}\\p{N} _-]", " ").trim();
+        return (safe.isEmpty() ? "فیش" : safe) + ".pdf";
+    }
+
+    private void sendRawBt(PrintPage page) {
+        try {
+            ZebraPrint.send(this, ZebraPrint.intent(page));
+        } catch (java.io.IOException | RuntimeException e) {
+            android.util.Log.w("Fishzan", "RawBT handoff failed", e);
+            Toast.makeText(this, "ارسال انجام نشد. RawBT و تنظیمات چاپگر را بررسی کنید.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void archiveCurrent() {
+        PrintPage page = currentPage();
+        JSONObject details = new JSONObject();
+        try {
+            details.put("template", templateIds.get(selection)).put("amount", amount.getText().toString())
+                .put("date", selectedDate.getTimeInMillis()).put("tracking", tracking.getText().toString())
+                .put("reference", reference.getText().toString());
+        } catch (JSONException e) { throw new IllegalStateException(e); }
+        EditText title = new EditText(this);
+        title.setTypeface(homa);
+        title.setSingleLine();
+        title.setFilters(new InputFilter[]{new InputFilter.LengthFilter(80)});
+        title.setText(currentTitle());
+        title.setSelectAllOnFocus(true);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("ثبت فیش در بایگانی")
+            .setView(title).setNegativeButton("انصراف", null).setPositiveButton("ذخیره", null).create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String name = title.getText().toString().trim();
+            if (name.isEmpty()) { title.setError("عنوان فیش را وارد کنید."); return; }
+            try {
+                archive.save(page, name, details);
+                dialog.dismiss();
+                Toast.makeText(this, "فیش در بایگانی ثبت شد.", Toast.LENGTH_SHORT).show();
+            } catch (JSONException | java.io.IOException | RuntimeException e) {
+                android.util.Log.w("Fishzan", "Could not save receipt", e);
+                Toast.makeText(this, "ذخیرهٔ فیش انجام نشد.", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void openArchive() {
+        List<ReceiptArchive.Entry> entries = archive.list();
+        if (entries.isEmpty()) {
+            new AlertDialog.Builder(this).setTitle("بایگانی فیش‌ها")
+                .setMessage("هنوز فیشی ذخیره نشده است. از «ثبت در بایگانی» استفاده کنید.")
+                .setPositiveButton("بستن", null).show();
+            return;
+        }
+        String[] titles = new String[entries.size()];
+        android.icu.text.DateFormat formatter = new android.icu.text.SimpleDateFormat("yyyy/MM/dd  HH:mm",
+            new android.icu.util.ULocale("fa_IR@calendar=persian"));
+        for (int i = 0; i < titles.length; i++) {
+            ReceiptArchive.Entry entry = entries.get(i);
+            titles[i] = entry.title + "  •  " + formatter.format(new java.util.Date(entry.timestamp));
+        }
+        new AlertDialog.Builder(this).setTitle("بایگانی فیش‌ها").setItems(titles,
+            (dialog, which) -> openReceipt(entries.get(which))).setNegativeButton("بستن", null).show();
+    }
+
+    private void openReceipt(ReceiptArchive.Entry entry) {
+        List<String> actions = new ArrayList<>(java.util.Arrays.asList(
+            "مشاهدهٔ فیش", "چاپ مجدد با RawBT", "چاپ PDF با اندروید", "ذخیرهٔ PDF"));
+        int source = templateIds.indexOf(entry.details.optString("template"));
+        if (source >= 0) actions.add("بازگردانی اطلاعات به فرم");
+        new AlertDialog.Builder(this).setTitle(entry.title)
+            .setItems(actions.toArray(new String[0]), (dialog, which) -> {
+                switch (which) {
+                    case 0: previewSaved(entry); break;
+                    case 1: sendRawBt(entry.page); break;
+                    case 2: entry.page.androidPrint(this, filename(entry.title)); break;
+                    case 3: exportPdf(entry.page, entry.title); break;
+                    case 4:
+                        picker.setSelection(source);
+                        select(source);
+                        amount.setText(entry.details.optString("amount"));
+                        tracking.setText(entry.details.optString("tracking"));
+                        reference.setText(entry.details.optString("reference"));
+                        selectedDate.setTimeInMillis(entry.details.optLong("date", System.currentTimeMillis()));
+                        updateDate();
+                        break;
+                    default: break;
+                }
+            }).setNegativeButton("بستن", null).show();
+    }
+
+    private void previewSaved(ReceiptArchive.Entry entry) {
+        try {
+            ImageView image = new ImageView(this);
+            image.setAdjustViewBounds(true);
+            image.setContentDescription(entry.title);
+            double scale = Math.min(550 / entry.page.widthMm, 2200 / entry.page.heightMm);
+            image.setImageBitmap(entry.page.bitmap((int) (scale * entry.page.widthMm),
+                (int) (scale * entry.page.heightMm)));
+            ScrollView scroll = new ScrollView(this);
+            scroll.addView(image, new ScrollView.LayoutParams(-1, -2));
+            new AlertDialog.Builder(this).setTitle(entry.title).setView(scroll)
+                .setPositiveButton("بستن", null).show();
+        } catch (java.io.IOException | RuntimeException e) {
+            Toast.makeText(this, "پیش‌نمایش PDF باز نشد.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void exportPdf(PrintPage page, String title) {
+        File temporary = null;
+        try {
+            temporary = File.createTempFile("fishzan-", ".pdf", getCacheDir());
+            try (FileOutputStream output = new FileOutputStream(temporary)) { page.writePdf(output); }
+            pendingPdf = temporary;
+            Intent create = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/pdf")
+                .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, filename(title));
+            startActivityForResult(create, 3);
+        } catch (java.io.IOException | RuntimeException e) {
+            if (temporary != null) temporary.delete();
+            pendingPdf = null;
+            Toast.makeText(this, "فایل PDF ساخته نشد.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void finishExport(int result, Intent data) {
+        File temporary = pendingPdf;
+        pendingPdf = null;
+        if (temporary == null) return;
+        try {
+            if (result != RESULT_OK || data == null || data.getData() == null) return;
+            try (java.io.OutputStream output = getContentResolver().openOutputStream(data.getData())) {
+                if (output == null) throw new java.io.IOException("destination");
+                new PrintPage(0, 0, temporary).writePdf(output);
+            }
+            Toast.makeText(this, "فایل PDF ذخیره شد.", Toast.LENGTH_SHORT).show();
+        } catch (java.io.IOException | RuntimeException e) {
+            Toast.makeText(this, "نوشتن فایل PDF انجام نشد.", Toast.LENGTH_LONG).show();
+        } finally {
+            temporary.delete();
+        }
+    }
+
+    private void openAssetLabel() { openAssetLabel(null); }
+
+    private void openAssetLabel(Bundle draft) {
+        android.content.SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        String logo = draft == null ? prefs.getString("assetLogo", "") : draft.getString("logo", "");
+        Bitmap bitmap = null;
+        if (!logo.isEmpty()) {
+            try { bitmap = loadLogo(Uri.parse(logo)); }
+            catch (java.io.IOException | SecurityException ignored) {}
+        }
+        double width = selection >= 0 ? templates.get(selection).widthMm : 55.0333333;
+        if (draft != null) width = draft.getDouble("widthMm", width);
+        assetDialog = new AssetLabelDialog(this, prefs, width, homa, bitmap, draft, () -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*")
+                .addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent, 4);
+        }, (page, value) -> {
+            ZebraPrint.send(this, ZebraPrint.intent(page));
+            try {
+                archive.save(page, "شماره اموال " + value, new JSONObject().put("assetNumber", value));
+            } catch (java.io.IOException | JSONException | RuntimeException e) {
+                android.util.Log.w("Fishzan", "Could not archive sent asset label", e);
+            }
+        }, this::exportPdf, () -> assetDialog = null);
     }
 
     private Bitmap readLogo(Uri uri) throws java.io.IOException {
@@ -592,7 +796,20 @@ public final class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == 3) { finishExport(result, data); return; }
         if (result != RESULT_OK || data == null || data.getData() == null) return;
+        if (request == 4) {
+            if (assetDialog == null) return;
+            Uri uri = data.getData();
+            try {
+                Bitmap bitmap = loadLogo(uri);
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                assetDialog.setLogo(uri, bitmap);
+            } catch (java.io.IOException | SecurityException e) {
+                Toast.makeText(this, "تصویر نشان باز نشد.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (request == 2) {
             if (layoutEditor == null) return;
             Uri uri = data.getData();

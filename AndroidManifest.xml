@@ -1,6 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ir.fishzan.app" android:versionCode="100" android:versionName="1.0.0">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ir.fishzan.app" android:versionCode="101" android:versionName="1.0.0">
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34"/>
-    <application android:label="فیش زن" android:icon="@drawable/fishzan" android:theme="@style/AppTheme" android:supportsRtl="true" android:allowBackup="false">
+    <queries><package android:name="ru.a402d.rawbtprinter"/></queries>
+    <application android:label="فیش زن" android:icon="@drawable/fishzan_canva" android:theme="@style/AppTheme" android:supportsRtl="true" android:allowBackup="false">
+        <meta-data android:name="ir.fishzan.AUTHOR" android:value="علی یوسفی پور"/>
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

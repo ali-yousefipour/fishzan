@@ -23,7 +23,11 @@ try {
         & keytool -genkeypair -keystore $signing -storepass android -keypass android -alias fishzan -dname "CN=Fishzan Local Build" -keyalg RSA -keysize 2048 -validity 10000
     }
     & "$tools\apksigner.bat" sign --ks $signing --ks-key-alias fishzan --ks-pass pass:android --out dist\fishzan.apk "$work\aligned.apk"
-    & "$tools\apksigner.bat" verify --verbose dist\fishzan.apk
+    $signature = & "$tools\apksigner.bat" verify --verbose --print-certs dist\fishzan.apk
+    $signature | Write-Output
+    $apkHash = (Get-FileHash -Algorithm SHA256 -LiteralPath dist\fishzan.apk).Hash
+    @("Fishzan Android", "Author: Ali Yousefipour", "APK SHA-256: $apkHash") + $signature |
+        Set-Content -Encoding utf8 dist\fishzan-signature.txt
     Compress-Archive -Path 'assets/templates/*' -DestinationPath 'dist/fishzan-templates.zip' -Force
     Compress-Archive -Path 'assets/templates/fanous/*' -DestinationPath 'dist/fanous-template.zip' -Force
     if (Test-Path -LiteralPath 'dist\fishzan.apk.idsig') {
