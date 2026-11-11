@@ -1,0 +1,215 @@
+{
+  "name": "فانوس",
+  "widthMm": 55.03333333333333,
+  "heightMm": 80.01,
+  "fields": {
+    "amount": [
+      353.919,
+      378.321,
+      41.667,
+      0.974,
+      1.0,
+      -5.0
+    ],
+    "date": [
+      249.506,
+      320.22,
+      31.782,
+      0.876,
+      0.983,
+      0.0
+    ],
+    "reference": [
+      524.506,
+      323.22,
+      29.663,
+      0.876,
+      0.983,
+      60.0,
+      13
+    ],
+    "tracking": [
+      506.506,
+      278.22,
+      29.663,
+      0.876,
+      0.983,
+      40.0,
+      8
+    ]
+  },
+  "styles": {
+    "amount": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "date": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "reference": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "tracking": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    }
+  },
+  "amountLeft": 115,
+  "labels": [
+    {
+      "text": "ریال",
+      "font": "BKoodakBold.ttf",
+      "left": 49,
+      "right": 114,
+      "baseline": 380.321,
+      "size": 45.833,
+      "scale": 0.974,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "پیگیری",
+      "font": "Shabnam.ttf",
+      "left": 517,
+      "right": 603,
+      "baseline": 277.642,
+      "size": 29.18097,
+      "scale": 1.057,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "پایانه",
+      "font": "Shabnam-Bold.ttf",
+      "left": 540,
+      "right": 600,
+      "baseline": 238.642,
+      "size": 29.18097,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "مبلغ",
+      "font": "Shabnam-Bold.ttf",
+      "left": 535,
+      "right": 600,
+      "baseline": 384.642,
+      "size": 37.517372,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "خرید موفق",
+      "font": "MSYekanBold.ttf",
+      "left": 470,
+      "right": 599,
+      "baseline": 432.854,
+      "size": 33.346008000000005,
+      "scale": 1.028,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "کد  کارتخوان",
+      "font": "MSYekanBold.ttf",
+      "left": 207,
+      "right": 356,
+      "baseline": 428.854,
+      "size": 33.346008000000005,
+      "scale": 1.028,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "رستوران فانوس",
+      "font": "Shabnam-Bold.ttf",
+      "left": 393,
+      "right": 601,
+      "baseline": 197.782,
+      "size": 32.300485,
+      "scale": 0.829,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "مرجع",
+      "font": "Shabnam.ttf",
+      "left": 538,
+      "right": 600,
+      "baseline": 325.996,
+      "size": 29.156496,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شهر",
+      "font": "Shabnam.ttf",
+      "left": 252,
+      "right": 303,
+      "baseline": 274.996,
+      "size": 29.156496,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "05138514545",
+      "font": "BYekan.ttf",
+      "left": 45,
+      "right": 229,
+      "baseline": 190.58,
+      "size": 33.333,
+      "scale": 0.866,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "95368712",
+      "font": "BTrafficBold.ttf",
+      "left": 40,
+      "right": 162,
+      "baseline": 234.014,
+      "size": 29.158729,
+      "scale": 0.926,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "657294832",
+      "font": "BKoodakBold.ttf",
+      "left": 42,
+      "right": 193,
+      "baseline": 431.014,
+      "size": 33.324683,
+      "scale": 0.926,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "504706**8897",
+      "font": "BHoma.ttf",
+      "left": 49,
+      "right": 242,
+      "baseline": 275.22,
+      "size": 31.241706,
+      "scale": 0.876,
+      "white": false,
+      "latin": false
+    }
+  ],
+  "logoBox": [
+    30,
+    18,
+    620,
+    128
+  ]
+}

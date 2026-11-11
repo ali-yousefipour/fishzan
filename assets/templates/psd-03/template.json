@@ -1,0 +1,138 @@
+{
+  "name": "جایگاه سوخت به پرداخت",
+  "widthMm": 55.03333333333333,
+  "heightMm": 80.01,
+  "fields": {
+    "amount": [
+      551.919,
+      336.321,
+      45.833,
+      0.974,
+      1.0,
+      -5.0
+    ],
+    "reference": [
+      213.949,
+      287.15,
+      29.167,
+      1.02,
+      1.0,
+      -5.0,
+      12
+    ],
+    "date": [
+      372.949,
+      217.15,
+      29.167,
+      1.02,
+      1.0,
+      -5.0
+    ]
+  },
+  "styles": {
+    "amount": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "plain"
+    },
+    "reference": {
+      "font": "BKoodakBold.ttf",
+      "white": false,
+      "latin": false
+    },
+    "date": {
+      "font": "BKoodakBold.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "mellat"
+    }
+  },
+  "terminalSuffix": "6745289",
+  "amountLeft": 416,
+  "labels": [
+    {
+      "text": "504706***2445",
+      "font": "BKoodakBold.ttf",
+      "left": 21,
+      "right": 233,
+      "baseline": 253.15,
+      "size": 29.167,
+      "scale": 1.02,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "ریال",
+      "font": "BKoodakBold.ttf",
+      "left": 347,
+      "right": 412,
+      "baseline": 333.321,
+      "size": 45.833,
+      "scale": 0.974,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":پایانه/زمان",
+      "font": "Shabnam-Bold.ttf",
+      "left": 527,
+      "right": 639,
+      "baseline": 222.642,
+      "size": 25.01226,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":بانک شهر",
+      "font": "Shabnam-Bold.ttf",
+      "left": 533,
+      "right": 635,
+      "baseline": 258.642,
+      "size": 25.01226,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":عملیات موفق خرید/مرجع",
+      "font": "Shabnam-Bold.ttf",
+      "left": 381,
+      "right": 638,
+      "baseline": 292.642,
+      "size": 25.01226,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":مبلغ",
+      "font": "Shabnam-Bold.ttf",
+      "left": 558,
+      "right": 634,
+      "baseline": 338.642,
+      "size": 37.517372,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "جایگاه سوخت آرام موج",
+      "font": "Shabnam-Bold.ttf",
+      "left": 413,
+      "right": 634,
+      "baseline": 189.782,
+      "size": 22.916061000000003,
+      "scale": 0.829,
+      "white": false,
+      "latin": false
+    }
+  ],
+  "logoBox": [
+    30,
+    18,
+    620,
+    128
+  ]
+}

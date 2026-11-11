@@ -1,0 +1,58 @@
+{
+  "name": "ترنج",
+  "widthMm": 77.978,
+  "heightMm": 141.30866666666665,
+  "fields": {
+    "date": [
+      212.529,
+      214.89,
+      45.833,
+      1.0,
+      1.0,
+      -140.0
+    ],
+    "time": [
+      156.529,
+      285.89,
+      45.833,
+      1.0,
+      1.0,
+      -140.0
+    ],
+    "amount": [
+      562,
+      1037,
+      72,
+      1,
+      1,
+      0
+    ]
+  },
+  "styles": {
+    "date": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "full-date"
+    },
+    "time": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false
+    },
+    "amount": {
+      "font": "BKoodakBold.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "comma"
+    }
+  },
+  "amountLeft": 170,
+  "labels": [],
+  "logoBox": [
+    16,
+    9,
+    220,
+    87
+  ]
+}

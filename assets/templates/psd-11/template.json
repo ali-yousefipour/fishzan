@@ -1,0 +1,176 @@
+{
+  "name": "ساندویچ خان",
+  "widthMm": 55.03333333333333,
+  "heightMm": 80.01,
+  "fields": {
+    "date": [
+      223.11,
+      290.14,
+      37.5,
+      0.917,
+      0.973,
+      0.0
+    ],
+    "time": [
+      373.314,
+      291.27,
+      37.5,
+      0.917,
+      1.015,
+      0.0
+    ],
+    "tracking": [
+      397.314,
+      422.426,
+      35.417,
+      0.917,
+      1.0,
+      0.0,
+      6
+    ],
+    "reference": [
+      266.9166,
+      422.426,
+      35.417,
+      0.917,
+      1.0,
+      0.0,
+      12
+    ],
+    "amount": [
+      440,
+      537,
+      54.167,
+      0.974,
+      1,
+      15
+    ]
+  },
+  "styles": {
+    "date": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "full-date"
+    },
+    "time": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false
+    },
+    "tracking": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false
+    },
+    "reference": {
+      "font": "BYekan.ttf",
+      "white": false,
+      "latin": false,
+      "mode": "slash"
+    },
+    "amount": {
+      "font": "BHoma.ttf",
+      "white": true,
+      "latin": false,
+      "mode": "plain"
+    }
+  },
+  "amountLeft": 202,
+  "labels": [
+    {
+      "text": "پایانه/کدکارتخوان",
+      "font": "Shabnam-Bold.ttf",
+      "left": 368,
+      "right": 608,
+      "baseline": 335.642,
+      "size": 33.348662,
+      "scale": 1.02,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "پیگیری/مرجع",
+      "font": "Shabnam-Bold.ttf",
+      "left": 421,
+      "right": 606,
+      "baseline": 417.642,
+      "size": 33.348662,
+      "scale": 1.02,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شهر",
+      "font": "Shabnam-Bold.ttf",
+      "left": 546,
+      "right": 605,
+      "baseline": 471.642,
+      "size": 34.01647,
+      "scale": 1.02,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "پیتزا ساندویچ خان",
+      "font": "Shabnam.ttf",
+      "left": 348,
+      "right": 608,
+      "baseline": 245.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "خـریـد - مـشتری",
+      "font": "Shabnam.ttf",
+      "left": 389,
+      "right": 606,
+      "baseline": 285.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "051-33495983",
+      "font": "BYekan.ttf",
+      "left": 39,
+      "right": 269,
+      "baseline": 241.512,
+      "size": 33.333,
+      "scale": 1.0,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "329572839/45829163",
+      "font": "BYekan.ttf",
+      "left": 32,
+      "right": 373,
+      "baseline": 374.426,
+      "size": 35.417,
+      "scale": 0.917,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "504706**2445",
+      "font": "BYekan.ttf",
+      "left": 41,
+      "right": 265,
+      "baseline": 466.426,
+      "size": 35.417,
+      "scale": 0.917,
+      "white": false,
+      "latin": false
+    }
+  ],
+  "logoBox": [
+    30,
+    18,
+    620,
+    128
+  ]
+}

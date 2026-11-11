@@ -1,0 +1,262 @@
+{
+  "name": "رسید کارتخوان پاسارگاد",
+  "widthMm": 55.03333333333333,
+  "heightMm": 80.01,
+  "fields": {
+    "amount": [
+      299.919,
+      427.321,
+      41.667,
+      0.974,
+      1.0,
+      15.0
+    ],
+    "date": [
+      592.247,
+      240.754,
+      37.5,
+      0.853,
+      0.906,
+      0.0
+    ],
+    "time": [
+      149.193,
+      244.014,
+      37.5,
+      0.926,
+      0.983,
+      0.0
+    ],
+    "tracking": [
+      485.506,
+      384.22,
+      37.5,
+      0.876,
+      0.983,
+      0.0,
+      4
+    ],
+    "reference": [
+      259.506,
+      384.22,
+      37.5,
+      0.876,
+      0.983,
+      0.0,
+      12
+    ]
+  },
+  "styles": {
+    "amount": {
+      "font": "BHoma.ttf",
+      "white": true,
+      "latin": false,
+      "mode": "plain"
+    },
+    "date": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "time": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "tracking": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    },
+    "reference": {
+      "font": "BHoma.ttf",
+      "white": false,
+      "latin": false
+    }
+  },
+  "amountLeft": 105,
+  "labels": [
+    {
+      "text": "ریال",
+      "font": "BKoodakBold.ttf",
+      "left": 36,
+      "right": 101,
+      "baseline": 425.321,
+      "size": 45.833,
+      "scale": 0.974,
+      "white": true,
+      "latin": false
+    },
+    {
+      "text": "کدکارتخوان",
+      "font": "Shabnam-Bold.ttf",
+      "left": 439,
+      "right": 598,
+      "baseline": 274.642,
+      "size": 33.348662,
+      "scale": 1.057,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "خرید-فروشنده",
+      "font": "Shabnam-Bold.ttf",
+      "left": 214,
+      "right": 408,
+      "baseline": 238.642,
+      "size": 33.348662,
+      "scale": 0.982,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":پیگیری",
+      "font": "Shabnam-Bold.ttf",
+      "left": 496,
+      "right": 601,
+      "baseline": 380.642,
+      "size": 33.348662,
+      "scale": 1.02,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "تراکنش موفق",
+      "font": "MSYekanBold.ttf",
+      "left": 380,
+      "right": 599,
+      "baseline": 423.854,
+      "size": 44.388716,
+      "scale": 1.028,
+      "white": true,
+      "latin": false
+    },
+    {
+      "text": "امضای مشتری",
+      "font": "MSYekanBold.ttf",
+      "left": 398,
+      "right": 599,
+      "baseline": 465.854,
+      "size": 41.681968,
+      "scale": 1.028,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "ماشین های اداری عرفان",
+      "font": "Shabnam-Bold.ttf",
+      "left": 268,
+      "right": 588,
+      "baseline": 203.782,
+      "size": 32.300485,
+      "scale": 0.829,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":فروشگاه",
+      "font": "Shabnam.ttf",
+      "left": 473,
+      "right": 599,
+      "baseline": 310.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شهر",
+      "font": "Shabnam.ttf",
+      "left": 540,
+      "right": 598,
+      "baseline": 344.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":مرجع",
+      "font": "Shabnam.ttf",
+      "left": 271,
+      "right": 353,
+      "baseline": 380.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":پایانه",
+      "font": "Shabnam.ttf",
+      "left": 187,
+      "right": 269,
+      "baseline": 309.996,
+      "size": 34.000272,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "05132345678-",
+      "font": "BYekan.ttf",
+      "left": 37,
+      "right": 262,
+      "baseline": 206.58,
+      "size": 37.5,
+      "scale": 0.866,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "281666736",
+      "font": "BKoodakBold.ttf",
+      "left": 36,
+      "right": 194,
+      "baseline": 279.22,
+      "size": 36.8625,
+      "scale": 0.876,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "70541453",
+      "font": "BHoma.ttf",
+      "left": 312,
+      "right": 461,
+      "baseline": 314.22,
+      "size": 36.8625,
+      "scale": 0.876,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "504706-X-8897",
+      "font": "Arial-BoldMT.ttf",
+      "left": 39,
+      "right": 275,
+      "baseline": 350.22,
+      "size": 36.8625,
+      "scale": 0.876,
+      "white": false,
+      "latin": true
+    },
+    {
+      "text": "70561328",
+      "font": "BHoma.ttf",
+      "left": 34,
+      "right": 175,
+      "baseline": 315.22,
+      "size": 36.8625,
+      "scale": 0.876,
+      "white": false,
+      "latin": false
+    }
+  ],
+  "logoBox": [
+    30,
+    18,
+    620,
+    128
+  ]
+}

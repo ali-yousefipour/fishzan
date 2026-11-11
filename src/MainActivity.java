@@ -1,0 +1,467 @@
+package ir.fishzan.app;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.TimePickerDialog;
+import android.content.res.ColorStateList;
+import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.icu.util.Calendar;
+import android.net.Uri;
+import java.util.Locale;
+import org.json.JSONArray;
+import org.json.JSONException;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.print.PrintAttributes;
+import android.print.PrintManager;
+import android.text.Editable;
+import android.text.InputFilter;
+import android.text.InputType;
+import android.text.TextWatcher;
+import android.view.View;
+import android.text.method.DigitsKeyListener;
+import android.widget.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+public final class MainActivity extends Activity {
+    private final List<Template> templates = new ArrayList<>();
+    private final List<String> names = new ArrayList<>();
+    private ArrayAdapter<String> adapter;
+    private Spinner picker;
+    private EditText amount, date, tracking, reference;
+    private ImageView preview;
+    private TextView status, trackingLabel, referenceLabel;
+    private Button print;
+    private Bitmap receipt, logo;
+    private Calendar selectedDate = PersianDateDialog.calendar();
+    private Button dateButton, timeButton;
+    private final List<String> templateIds = new ArrayList<>();
+    private int selection = -1;
+
+    @Override public void onCreate(Bundle state) {
+        super.onCreate(state);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(0xfff4f6f4);
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        layout.setPadding(dp(20), dp(16), dp(20), dp(20));
+        scroll.addView(layout);
+        setContentView(scroll);
+
+        LinearLayout header = row(layout);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        ImageView icon = new ImageView(this);
+        int iconId = getResources().getIdentifier("fishzan", "drawable", getPackageName());
+        icon.setImageResource(iconId);
+        header.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        TextView title = label(header, "فیش زن");
+        title.setPadding(dp(12), 0, dp(12), 0);
+        title.setTypeface(null, Typeface.BOLD);
+        title.setTextSize(27);
+        label(layout, "قالب فیش").setPadding(0, dp(20), 0, 0);
+        picker = new Spinner(this);
+        picker.setMinimumHeight(dp(48));
+        layout.addView(picker, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout templateActions = row(layout);
+        button(templateActions, "افزودن قالب", () -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType("*/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent, 1);
+        });
+        button(templateActions, "ویرایش قالب", this::editTemplate);
+        LinearLayout logoActions = row(layout);
+        button(logoActions, "انتخاب لوگوی فروشگاه", () -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.setType("image/*");
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            startActivityForResult(intent, 2);
+        });
+        button(logoActions, "حذف لوگو", () -> {
+            logo = null;
+            getPreferences(MODE_PRIVATE).edit().remove("storeLogo").apply();
+            refresh();
+        });
+        String savedLogo = getPreferences(MODE_PRIVATE).getString("storeLogo", "");
+        if (!savedLogo.isEmpty()) {
+            try { logo = readLogo(Uri.parse(savedLogo)); }
+            catch (java.io.IOException | SecurityException ignored) {}
+        }
+        label(layout, "مبلغ به ریال").setPadding(0, dp(20), 0, 0);
+        amount = input(layout, "مثلاً ۲۰۷۵۰۰۰۰", InputType.TYPE_CLASS_NUMBER, 12);
+        label(layout, "تاریخ شمسی و ساعت");
+        date = new EditText(this);
+        if (state != null) selectedDate.setTimeInMillis(state.getLong("selectedDate", selectedDate.getTimeInMillis()));
+        LinearLayout dateActions = row(layout);
+        dateButton = button(dateActions, "", () -> PersianDateDialog.show(this, selectedDate, chosen -> {
+            selectedDate.set(Calendar.YEAR, chosen.get(Calendar.YEAR));
+            selectedDate.set(Calendar.MONTH, chosen.get(Calendar.MONTH));
+            selectedDate.set(Calendar.DAY_OF_MONTH, chosen.get(Calendar.DAY_OF_MONTH));
+            updateDate();
+        }));
+        timeButton = button(dateActions, "", () -> new TimePickerDialog(this, (view, hour, minute) -> {
+            selectedDate.set(Calendar.HOUR_OF_DAY, hour);
+            selectedDate.set(Calendar.MINUTE, minute);
+            selectedDate.set(Calendar.SECOND, 0);
+            updateDate();
+        }, selectedDate.get(Calendar.HOUR_OF_DAY), selectedDate.get(Calendar.MINUTE), true).show());
+        updateDate();
+        trackingLabel = label(layout, "شمارهٔ پیگیری");
+        tracking = input(layout, "", InputType.TYPE_CLASS_NUMBER, 40);
+        referenceLabel = label(layout, "شمارهٔ مرجع");
+        reference = input(layout, "", InputType.TYPE_CLASS_NUMBER, 40);
+        print = button(layout, "چاپ فیش", this::print);
+        print.setTextColor(Color.WHITE);
+        print.setBackgroundTintList(new ColorStateList(
+            new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
+            new int[]{0xff697670, 0xff246456}));
+        status = label(layout, "");
+        label(layout, "پیش‌نمایش").setPadding(0, dp(12), 0, dp(8));
+        status.setTextColor(0xffa52714);
+        preview = new ImageView(this);
+        preview.setAdjustViewBounds(true);
+        preview.setBackgroundColor(Color.WHITE);
+        preview.setContentDescription("پیش‌نمایش فیش");
+        layout.addView(preview, new LinearLayout.LayoutParams(-1, -2));
+
+        try {
+            for (String name : getAssets().list("templates")) {
+                add(new Template(this, "templates/" + name, null), "asset:" + name);
+            }
+        } catch (Exception e) {
+            status.setText("بارگیری قالب همراه برنامه ناموفق بود.");
+        }
+        File[] imported = getDir("templates", MODE_PRIVATE).listFiles();
+        if (imported != null) for (File dir : imported) {
+            try { add(new Template(this, null, dir), "file:" + dir.getName()); }
+            catch (Exception ignored) { /* Incomplete template directories are excluded. */ }
+        }
+        adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names);
+        picker.setAdapter(adapter);
+        picker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(AdapterView<?> parent, View row, int position, long id) {
+                select(position);
+            }
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        TextWatcher watcher = new TextWatcher() {
+            public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
+            public void onTextChanged(CharSequence text, int start, int before, int count) { refresh(); }
+            public void afterTextChanged(Editable text) {}
+        };
+        amount.addTextChangedListener(watcher);
+        date.addTextChangedListener(watcher);
+        tracking.addTextChangedListener(watcher);
+        reference.addTextChangedListener(watcher);
+        print.setEnabled(false);
+        if (!templates.isEmpty()) {
+            int index = state == null ? 0 : Math.min(state.getInt("selection"), templates.size() - 1);
+            if (state != null) {
+                amount.setText(state.getString("amount"));
+                tracking.setText(state.getString("tracking", ""));
+                reference.setText(state.getString("reference", ""));
+            }
+            picker.setSelection(index);
+            select(index);
+        }
+    }
+
+    @Override protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        state.putInt("selection", Math.max(0, selection));
+        state.putString("amount", amount.getText().toString());
+        state.putLong("selectedDate", selectedDate.getTimeInMillis());
+        state.putString("tracking", tracking.getText().toString());
+        state.putString("reference", reference.getText().toString());
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private TextView label(LinearLayout layout, String caption) {
+        TextView text = new TextView(this);
+        text.setText(caption);
+        text.setTextSize(15);
+        text.setTextColor(0xff173f39);
+        layout.addView(text);
+        return text;
+    }
+
+    private EditText input(LinearLayout layout, String hint, int type, int length) {
+        EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setInputType(type);
+        if (type == InputType.TYPE_CLASS_NUMBER) {
+            field.setKeyListener(DigitsKeyListener.getInstance("0123456789۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩"));
+            field.setRawInputType(type);
+        }
+        field.setFilters(new InputFilter[]{new InputFilter.LengthFilter(length)});
+        field.setTextDirection(View.TEXT_DIRECTION_LTR);
+        field.setHint(hint);
+        field.setMinHeight(dp(50));
+        field.setPadding(dp(14), dp(8), dp(14), dp(8));
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(Color.WHITE);
+        background.setCornerRadius(dp(10));
+        background.setStroke(dp(1), 0xffa3b5aa);
+        field.setBackground(background);
+        layout.addView(field, new LinearLayout.LayoutParams(-1, -2));
+        return field;
+    }
+
+    private Button button(LinearLayout layout, String caption, Runnable action) {
+        Button button = new Button(this);
+        button.setText(caption);
+        button.setOnClickListener(view -> action.run());
+        button.setMinHeight(dp(48));
+        button.setAllCaps(false);
+        LinearLayout.LayoutParams params = layout.getOrientation() == LinearLayout.HORIZONTAL
+            ? new LinearLayout.LayoutParams(0, -2, 1)
+            : new LinearLayout.LayoutParams(-1, -2);
+        layout.addView(button, params);
+        return button;
+    }
+
+    private LinearLayout row(LinearLayout layout) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        layout.addView(row, new LinearLayout.LayoutParams(-1, -2));
+        return row;
+    }
+
+    private void updateDate() {
+        String day = String.format(Locale.US, "%04d/%02d/%02d", selectedDate.get(Calendar.YEAR),
+            selectedDate.get(Calendar.MONTH) + 1, selectedDate.get(Calendar.DAY_OF_MONTH));
+        String clock = String.format(Locale.US, "%02d:%02d:%02d", selectedDate.get(Calendar.HOUR_OF_DAY),
+            selectedDate.get(Calendar.MINUTE), selectedDate.get(Calendar.SECOND));
+        dateButton.setText("تاریخ  " + day);
+        timeButton.setText("ساعت  " + clock.substring(0, 5));
+        date.setText(day + " " + clock);
+    }
+
+    private void add(Template template, String id) {
+        templates.add(template);
+        templateIds.add(id);
+        names.add(getPreferences(MODE_PRIVATE).getString(id + ":name", template.name));
+    }
+
+    private String templateNote() {
+        return getPreferences(MODE_PRIVATE).getString(templateIds.get(selection) + ":note", "");
+    }
+
+    private JSONArray templateLabels() {
+        String json = getPreferences(MODE_PRIVATE).getString(templateIds.get(selection) + ":labels", "[]");
+        try { return new JSONArray(json); }
+        catch (JSONException e) { return new JSONArray(); }
+    }
+
+    private void editTemplate() {
+        if (selection < 0) return;
+        int index = selection;
+        String id = templateIds.get(index);
+        LinearLayout fields = new LinearLayout(this);
+        fields.setOrientation(LinearLayout.VERTICAL);
+        fields.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        fields.setPadding(dp(20), dp(8), dp(20), dp(8));
+        label(fields, "نام قالب");
+        EditText name = input(fields, "", InputType.TYPE_CLASS_TEXT, 60);
+        name.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+        name.setText(names.get(index));
+        label(fields, "متن پایین فیش");
+        EditText note = input(fields, "", InputType.TYPE_CLASS_TEXT, 100);
+        note.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+        note.setText(templateNote());
+        List<EditText> editable = new ArrayList<>();
+        List<String> defaults = templates.get(index).labelTexts();
+        JSONArray edits = templateLabels();
+        if (!defaults.isEmpty()) label(fields, "نوشته‌های ثابت فیش");
+        for (int i = 0; i < defaults.size(); i++) {
+            EditText item = input(fields, defaults.get(i), InputType.TYPE_CLASS_TEXT, 140);
+            item.setTextDirection(View.TEXT_DIRECTION_FIRST_STRONG);
+            item.setText(edits.optString(i, defaults.get(i)));
+            item.setContentDescription(defaults.get(i));
+            editable.add(item);
+        }
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(fields);
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("ویرایش قالب")
+            .setView(scroll).setNegativeButton("انصراف", null)
+            .setPositiveButton("ذخیره", null).create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String value = name.getText().toString().trim();
+            if (value.isEmpty()) {
+                name.setError("نام قالب را وارد کنید.");
+                return;
+            }
+            JSONArray saved = new JSONArray();
+            for (EditText item : editable) saved.put(item.getText().toString().trim());
+            getPreferences(MODE_PRIVATE).edit().putString(id + ":name", value)
+                .putString(id + ":note", note.getText().toString().trim())
+                .putString(id + ":labels", saved.toString()).apply();
+            names.set(index, value);
+            adapter.notifyDataSetChanged();
+            refresh();
+            dialog.dismiss();
+        });
+    }
+
+    private void select(int index) {
+        Template template = templates.get(index);
+        selection = index;
+        showNumber(trackingLabel, tracking, template.tracking);
+        showNumber(referenceLabel, reference, template.reference);
+        refresh();
+    }
+
+    private void showNumber(TextView label, EditText input, org.json.JSONArray field) {
+        int visibility = field == null ? View.GONE : View.VISIBLE;
+        label.setVisibility(visibility);
+        input.setVisibility(visibility);
+        if (field != null) input.setHint(String.format("%d رقم", field.optInt(6)));
+    }
+
+    private boolean matchesLength(String value, int length) {
+        return value.length() == length && value.matches("[0-9]+");
+    }
+
+    private String ascii(String text) {
+        StringBuilder result = new StringBuilder();
+        for (char c : text.trim().toCharArray()) {
+            int digit = Character.digit(c, 10);
+            result.append(digit >= 0 ? (char) ('0' + digit) : c);
+        }
+        return result.toString();
+    }
+
+    private void refresh() {
+        if (selection < 0) return;
+        String money = ascii(amount.getText().toString());
+        String timestamp = ascii(date.getText().toString());
+        boolean validAmount = money.matches("[0-9]{1,12}") && Long.parseLong(money) > 0;
+        boolean validDate = timestamp.matches("(?:[0-9]{2}|[0-9]{4})/(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01]) ([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]");
+        Template template = templates.get(selection);
+        String trace = ascii(tracking.getText().toString());
+        String ref = ascii(reference.getText().toString());
+        int traceLength = template.tracking == null ? 0 : template.tracking.optInt(6);
+        int refLength = template.reference == null ? 0 : template.reference.optInt(6);
+        boolean validTrace = traceLength == 0 || matchesLength(trace, traceLength);
+        boolean validRef = refLength == 0 || matchesLength(ref, refLength);
+        String warning = !money.isEmpty() && !validAmount ? "مبلغ باید عدد مثبت باشد." :
+            !timestamp.isEmpty() && !validDate ? "تاریخ و ساعت را به شکل نمونه وارد کنید." :
+            !trace.isEmpty() && !validTrace ? String.format("شمارهٔ پیگیری باید %d رقم باشد.", traceLength) :
+            !ref.isEmpty() && !validRef ? String.format("شمارهٔ مرجع باید %d رقم باشد.", refLength) : "";
+        try {
+            receipt = template.render(validAmount ? money : "", validDate ? timestamp : "",
+                validTrace ? trace : "", validRef ? ref : "", logo, templateNote(), templateLabels(), 1);
+        } catch (IllegalArgumentException e) {
+            warning = e.getMessage();
+            validAmount = false;
+            receipt = template.render("", validDate ? timestamp : "",
+                validTrace ? trace : "", validRef ? ref : "", logo, templateNote(), templateLabels(), 1);
+        }
+        preview.setImageBitmap(receipt);
+        status.setText(warning);
+        print.setEnabled(validAmount && validDate && validTrace && validRef);
+    }
+
+    private void print() {
+        Template template = templates.get(selection);
+        PrintManager manager = (PrintManager) getSystemService(PRINT_SERVICE);
+        PrintAttributes attributes = new PrintAttributes.Builder()
+            .setMediaSize(new PrintAttributes.MediaSize("receipt", template.name,
+                (int) Math.round(template.widthMm / 25.4 * 1000),
+                (int) Math.round(template.heightMm / 25.4 * 1000)))
+            .setColorMode(PrintAttributes.COLOR_MODE_MONOCHROME)
+            .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+            .build();
+        manager.print("فیش " + template.name, new ReceiptPrint(template.render(ascii(amount.getText().toString()), date.getText().toString(),
+            ascii(tracking.getText().toString()), ascii(reference.getText().toString()), logo, templateNote(), templateLabels(), 2), template), attributes);
+    }
+
+    private Bitmap readLogo(Uri uri) throws java.io.IOException {
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            BitmapFactory.decodeStream(in, null, options);
+        }
+        options.inJustDecodeBounds = false;
+        options.inSampleSize = 1;
+        while (Math.max(options.outWidth, options.outHeight) / options.inSampleSize > 1024) {
+            options.inSampleSize *= 2;
+        }
+        try (InputStream in = getContentResolver().openInputStream(uri)) {
+            Bitmap bitmap = BitmapFactory.decodeStream(in, null, options);
+            if (bitmap == null) throw new java.io.IOException("logo");
+            return bitmap;
+        }
+    }
+
+    @Override protected void onActivityResult(int request, int result, Intent data) {
+        super.onActivityResult(request, result, data);
+        if (result != RESULT_OK || data == null || data.getData() == null) return;
+        if (request == 2) {
+            Uri uri = data.getData();
+            try {
+                Bitmap selected = readLogo(uri);
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                logo = selected;
+                getPreferences(MODE_PRIVATE).edit().putString("storeLogo", uri.toString()).apply();
+                refresh();
+            } catch (java.io.IOException | SecurityException e) {
+                Toast.makeText(this, "باز کردن تصویر لوگو ممکن نبود.", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if (request != 1) return;
+        File dir = new File(getDir("templates", MODE_PRIVATE), UUID.randomUUID().toString());
+        try {
+            if (!dir.mkdir()) throw new java.io.IOException();
+            int total = 0;
+            try (InputStream input = getContentResolver().openInputStream(data.getData());
+                 ZipInputStream zip = new ZipInputStream(input)) {
+                ZipEntry entry;
+                byte[] buffer = new byte[8192];
+                while ((entry = zip.getNextEntry()) != null) {
+                    String file = entry.getName();
+                    if (!(file.equals("template.json") || file.matches("[A-Za-z0-9_-]+[.]ttf") || file.equals("paper.png"))) {
+                        throw new java.io.IOException();
+                    }
+                    File target = new File(dir, file);
+                    if (!target.createNewFile()) throw new java.io.IOException();
+                    try (FileOutputStream out = new FileOutputStream(target)) {
+                        int read;
+                        while ((read = zip.read(buffer)) != -1) {
+                            total += read;
+                            if (total > 8 * 1024 * 1024) throw new java.io.IOException();
+                            out.write(buffer, 0, read);
+                        }
+                    }
+                }
+            }
+            add(new Template(this, null, dir), "file:" + dir.getName());
+            adapter.notifyDataSetChanged();
+            picker.setSelection(templates.size() - 1);
+        } catch (Exception e) {
+            File[] files = dir.listFiles();
+            if (files != null) for (File file : files) file.delete();
+            dir.delete();
+            Toast.makeText(this, "فایل قالب معتبر نیست.", Toast.LENGTH_LONG).show();
+        }
+    }
+}
+

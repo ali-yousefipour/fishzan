@@ -1,0 +1,159 @@
+{
+  "name": "رسید کارتخوان سامان کیش (ترنج)",
+  "widthMm": 55.03333333333333,
+  "heightMm": 80.01,
+  "fields": {
+    "amount": [
+      362.919,
+      326.321,
+      50.0,
+      0.974,
+      1.0,
+      0.0
+    ],
+    "date": [
+      421.412,
+      214.58,
+      41.667,
+      0.866,
+      1.0,
+      20.0
+    ],
+    "reference": [
+      225.412,
+      249.58,
+      29.167,
+      0.866,
+      1.0,
+      20.0,
+      12
+    ]
+  },
+  "styles": {
+    "amount": {
+      "font": "Arial-BoldMT.ttf",
+      "white": true,
+      "latin": true,
+      "mode": "comma"
+    },
+    "date": {
+      "font": "Arial-BoldMT.ttf",
+      "white": false,
+      "latin": true,
+      "mode": "full-dash"
+    },
+    "reference": {
+      "font": "Arial-BoldMT.ttf",
+      "white": false,
+      "latin": true
+    }
+  },
+  "amountLeft": 115,
+  "labels": [
+    {
+      "text": "ریال",
+      "font": "BKoodakBold.ttf",
+      "left": 45,
+      "right": 110,
+      "baseline": 324.321,
+      "size": 45.833,
+      "scale": 0.974,
+      "white": true,
+      "latin": false
+    },
+    {
+      "text": "رستوران ترنج",
+      "font": "Shabnam-Bold.ttf",
+      "left": 447,
+      "right": 608,
+      "baseline": 164.642,
+      "size": 29.18097,
+      "scale": 1.057,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":مبلغ",
+      "font": "MSYekanBold.ttf",
+      "left": 527,
+      "right": 604,
+      "baseline": 320.854,
+      "size": 44.388716,
+      "scale": 1.028,
+      "white": true,
+      "latin": false
+    },
+    {
+      "text": "خرید  موفق",
+      "font": "MSYekanBold.ttf",
+      "left": 461,
+      "right": 612,
+      "baseline": 212.854,
+      "size": 37.513988000000005,
+      "scale": 1.028,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":مرجع",
+      "font": "Shabnam-Bold.ttf",
+      "left": 236,
+      "right": 297,
+      "baseline": 249.996,
+      "size": 24.990816,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":پایانه",
+      "font": "Shabnam-Bold.ttf",
+      "left": 546,
+      "right": 607,
+      "baseline": 248.996,
+      "size": 24.990816,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": ":ملت",
+      "font": "Shabnam-Bold.ttf",
+      "left": 559,
+      "right": 613,
+      "baseline": 281.996,
+      "size": 24.990816,
+      "scale": 0.855,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "610433-**-2632",
+      "font": "Arial-BoldMT.ttf",
+      "left": 49,
+      "right": 260,
+      "baseline": 283.061,
+      "size": 27.533057999999997,
+      "scale": 0.878,
+      "white": false,
+      "latin": true
+    },
+    {
+      "text": "13921061",
+      "font": "Arial-BoldMT.ttf",
+      "left": 419,
+      "right": 530,
+      "baseline": 248.58,
+      "size": 29.167,
+      "scale": 0.866,
+      "white": false,
+      "latin": true
+    }
+  ],
+  "logoBox": [
+    30,
+    18,
+    620,
+    128
+  ]
+}
