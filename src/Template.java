@@ -184,7 +184,7 @@ final class Template {
         }
         for (int i = 0; i < layout.logos.size(); i++) {
             TemplateLayout.Logo logo = layout.logos.get(i);
-            elements.put(logo.id, "لوگو " + (i + 1) + (logo.bitmap == null ? " (تصویر در دسترس نیست)" : ""));
+            elements.put(logo.id, "تصویر یا لوگو " + (i + 1) + (logo.bitmap == null ? " (تصویر در دسترس نیست)" : ""));
         }
         return elements;
     }
@@ -249,18 +249,19 @@ final class Template {
             if (text.isEmpty()) text = spec.optString("text");
             labelPaint.setTypeface(label.font);
             labelPaint.setColor(spec.optBoolean("white") ? Color.WHITE : Color.BLACK);
-            labelPaint.setTextSize((float) spec.optDouble("size"));
+            String key = "label:" + i;
+            float sizeScale = layout.scale(key);
+            labelPaint.setTextSize((float) spec.optDouble("size") * sizeScale);
             labelPaint.setTextScaleX(1);
             float left = (float) spec.optDouble("left");
             float right = (float) spec.optDouble("right");
             float textWidth = labelPaint.measureText(text);
             if (textWidth > 0) {
-                labelPaint.setTextScaleX(Math.min((float) spec.optDouble("scale"), (right - left) / textWidth));
-                String key = "label:" + i;
+                labelPaint.setTextScaleX(Math.min((float) spec.optDouble("scale"), (right - left) * sizeScale / textWidth));
                 PointF move = layout.offset(key);
                 float baseline = (float) spec.optDouble("baseline") + move.y;
                 right += move.x;
-                movedWhiteText(labelPaint, move, right - labelPaint.measureText(text) / 2, baseline);
+                applyTextColor(labelPaint, layout, key, move, right - labelPaint.measureText(text) / 2, baseline);
                 canvas.drawText(text, right, baseline, labelPaint);
                 textBounds(bounds, key, right - labelPaint.measureText(text), right, baseline, labelPaint);
             }
@@ -270,7 +271,10 @@ final class Template {
             PointF move = layout.offset(logo.id);
             float x = logo.x + move.x;
             float y = logo.y + move.y;
-            RectF area = new RectF(x, y, x + logo.width, y + logo.height);
+            float scale = Math.min(layout.scale(logo.id), Math.min(paperWidth / logo.width, paperHeight / logo.height));
+            float width = logo.width * scale;
+            float height = logo.height * scale;
+            RectF area = new RectF(x, y, x + width, y + height);
             if (logo.bitmap != null) canvas.drawBitmap(logo.bitmap, null, area, logoPaint);
             if (bounds != null) bounds.put(logo.id, area);
         }
@@ -278,7 +282,9 @@ final class Template {
             if (note.isEmpty()) note = "متن پایین فیش";
             Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
             label.setColor(Color.BLACK);
-            label.setTextSize(28);
+            label.setTextSize(28 * layout.scale("note"));
+            Integer customColor = layout.color("note");
+            if (customColor != null) label.setColor(customColor);
             label.setTextAlign(Paint.Align.CENTER);
             float x = noteBox == null ? paperWidth / 2f : (float) noteBox.optDouble(0);
             float y = noteBox == null ? paperHeight - 70 : (float) noteBox.optDouble(1);
@@ -326,7 +332,12 @@ final class Template {
         return value.toString();
     }
 
-    private void movedWhiteText(Paint paint, PointF move, float x, float baseline) {
+    private void applyTextColor(Paint paint, TemplateLayout layout, String key, PointF move, float x, float baseline) {
+        Integer customColor = layout.color(key);
+        if (customColor != null) {
+            paint.setColor(customColor);
+            return;
+        }
         if (paint.getColor() != Color.WHITE || (move.x == 0 && move.y == 0)) return;
         int column = Math.max(0, Math.min(paperWidth - 1, Math.round(x)));
         int row = Math.max(0, Math.min(paperHeight - 1, Math.round(baseline + paint.ascent() / 3)));
@@ -354,23 +365,25 @@ final class Template {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
         paint.setTypeface(fonts.get(field));
         paint.setColor(style.optBoolean("white") ? Color.WHITE : Color.BLACK);
-        paint.setTextSize((float) field.optDouble(2));
+        paint.setTextSize((float) field.optDouble(2) * layout.scale(key));
         float spacing = (float) field.optDouble(5) * paint.getTextSize() / 1000;
         float width = spacing * (persian.length() - 1);
         for (int i = 0; i < persian.length(); i++) width += paint.measureText(persian.substring(i, i + 1));
-        if (bounds == null && field == amount && field.optDouble(0) - width * field.optDouble(3) < amountLeft) {
-            throw new IllegalArgumentException("مبلغ در فضای تعیین‌شدهٔ این قالب جا نمی‌شود.");
-        }
         PointF move = layout.offset(key);
         float right = (float) field.optDouble(0) + move.x;
         float baseline = (float) field.optDouble(1) + move.y;
+        float left = right - width * (float) field.optDouble(3);
+        boolean customized = layout.scale(key) != 1 || move.x != 0 || move.y != 0;
+        if (bounds == null && field == amount && (left < (customized ? 0 : amountLeft) || right > paperWidth)) {
+            throw new IllegalArgumentException("مبلغ در فضای تعیین‌شدهٔ این قالب جا نمی‌شود.");
+        }
         if (bounds != null) {
             float sx = (float) field.optDouble(3);
             float sy = (float) field.optDouble(4);
             bounds.put(key, new RectF(right - width * sx, baseline + paint.ascent() * sy,
                 right, baseline + paint.descent() * sy));
         }
-        movedWhiteText(paint, move, right - width * (float) field.optDouble(3) / 2, baseline);
+        applyTextColor(paint, layout, key, move, (left + right) / 2, baseline);
         canvas.save();
         canvas.translate(right, baseline);
         canvas.scale((float) field.optDouble(3), (float) field.optDouble(4));

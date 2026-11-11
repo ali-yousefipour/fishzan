@@ -32,7 +32,7 @@ final class LayoutEditor {
     private final Map<String, RectF> bounds = new HashMap<>();
     private final List<String> keys = new ArrayList<>();
     private final Spinner picker;
-    private final Button remove, edit;
+    private final Button remove, edit, appearance;
     private final Preview preview;
     private final AlertDialog dialog;
     private String selected;
@@ -62,11 +62,11 @@ final class LayoutEditor {
         LinearLayout actions = new LinearLayout(context);
         content.addView(actions);
         Button add = new Button(context);
-        add.setText("افزودن لوگو");
+        add.setText("افزودن تصویر");
         add.setOnClickListener(view -> chooseLogo.run());
         actions.addView(add, new LinearLayout.LayoutParams(0, -2, 1));
         remove = new Button(context);
-        remove.setText("حذف لوگو");
+        remove.setText("حذف تصویر");
         remove.setOnClickListener(view -> {
             if (selected != null && selected.startsWith("logo:")) {
                 layout.removeLogo(selected);
@@ -78,6 +78,12 @@ final class LayoutEditor {
         edit.setText("ویرایش متن");
         edit.setOnClickListener(view -> editText());
         actions.addView(edit, new LinearLayout.LayoutParams(0, -2, 1));
+
+        appearance = new Button(context);
+        appearance.setText("اندازه و رنگ");
+        appearance.setMinimumHeight(dp(48));
+        appearance.setOnClickListener(view -> editAppearance());
+        content.addView(appearance, new LinearLayout.LayoutParams(-1, -2));
 
         preview = new Preview(context);
         content.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -123,6 +129,97 @@ final class LayoutEditor {
             }).show();
     }
 
+    private void editAppearance() {
+        String key = selected;
+        boolean image = key.startsWith("logo:");
+        LinearLayout form = new LinearLayout(context);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        form.setPadding(dp(22), dp(12), dp(22), dp(8));
+
+        TextView size = new TextView(context);
+        form.addView(size);
+        android.widget.SeekBar scale = new android.widget.SeekBar(context);
+        scale.setMax(275);
+        scale.setProgress(Math.round(layout.scale(key) * 100) - 25);
+        scale.setContentDescription(image ? "اندازهٔ تصویر" : "اندازهٔ نوشته");
+        form.addView(scale);
+        java.util.function.IntConsumer showSize = progress -> size.setText(
+            String.format(new java.util.Locale("fa"), "%s  ٪%d", image ? "اندازهٔ تصویر" : "اندازهٔ نوشته", progress + 25));
+        showSize.accept(scale.getProgress());
+        scale.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(android.widget.SeekBar bar, int progress, boolean fromUser) {
+                showSize.accept(progress);
+            }
+            public void onStartTrackingTouch(android.widget.SeekBar bar) {}
+            public void onStopTrackingTouch(android.widget.SeekBar bar) {}
+        });
+
+        android.widget.EditText hex = new android.widget.EditText(context);
+        if (!image) {
+            TextView caption = new TextView(context);
+            caption.setText("رنگ نوشته");
+            form.addView(caption);
+            String[] names = {"رنگ قالب", "مشکی", "سفید", "قرمز", "آبی", "سبز", "خاکستری", "رنگ دلخواه"};
+            String[] values = {"", "#000000", "#FFFFFF", "#C62828", "#174EA6", "#146B3A", "#555555"};
+            Integer previous = layout.color(key);
+            String initial = previous == null ? "" : String.format(java.util.Locale.ROOT, "#%06X", previous & 0xffffff);
+            Spinner palette = new Spinner(context);
+            palette.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, names));
+            form.addView(palette, new LinearLayout.LayoutParams(-1, dp(48)));
+            hex.setSingleLine();
+            hex.setTextDirection(View.TEXT_DIRECTION_LTR);
+            hex.setHint("#RRGGBB");
+            hex.setText(initial);
+            hex.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(7)});
+            form.addView(hex, new LinearLayout.LayoutParams(-1, -2));
+            int initialChoice = java.util.Arrays.asList(values).indexOf(initial);
+            palette.setSelection(initialChoice < 0 ? names.length - 1 : initialChoice);
+            palette.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                public void onItemSelected(AdapterView<?> parent, View row, int position, long id) {
+                    boolean custom = position == names.length - 1;
+                    if (!custom) hex.setText(values[position]);
+                    hex.setVisibility(custom ? View.VISIBLE : View.GONE);
+                }
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
+
+        AlertDialog editor = new AlertDialog.Builder(context)
+            .setTitle(image ? "اندازهٔ تصویر یا لوگو" : "اندازه و رنگ نوشته")
+            .setView(form).setNegativeButton("انصراف", null).setPositiveButton("اعمال", null).create();
+        editor.show();
+        editor.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            Integer color = null;
+            String value = hex.getText().toString().trim();
+            if (!image && !value.isEmpty()) {
+                if (!value.matches("#[0-9A-Fa-f]{6}")) {
+                    hex.setError("رنگ را به شکل #RRGGBB وارد کنید.");
+                    return;
+                }
+                color = Color.parseColor(value);
+            }
+            layout.format(key, (scale.getProgress() + 25) / 100f, color);
+            preview.render();
+            keepInsidePage(key);
+            editor.dismiss();
+        });
+    }
+
+    private void keepInsidePage(String key) {
+        RectF box = bounds.get(key);
+        if (box == null) return;
+        float dx = box.width() > template.paperWidth ? -box.left
+            : box.left < 0 ? -box.left : Math.min(0, template.paperWidth - box.right);
+        float dy = box.height() > template.paperHeight ? -box.top
+            : box.top < 0 ? -box.top : Math.min(0, template.paperHeight - box.bottom);
+        if (dx != 0 || dy != 0) {
+            PointF original = layout.offset(key);
+            layout.move(key, original.x + dx, original.y + dy);
+            preview.render();
+        }
+    }
+
     void dismiss() { dialog.dismiss(); }
 
     void addLogo(Uri uri, Bitmap bitmap) {
@@ -151,6 +248,8 @@ final class LayoutEditor {
         selected = key;
         remove.setEnabled(key.startsWith("logo:"));
         edit.setEnabled(key.startsWith("label:") || key.equals("note"));
+        appearance.setEnabled(!key.startsWith("rule:"));
+        appearance.setText(key.startsWith("logo:") ? "اندازهٔ تصویر" : "اندازه و رنگ");
         preview.invalidate();
     }
 

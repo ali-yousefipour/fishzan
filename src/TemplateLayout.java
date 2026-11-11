@@ -37,6 +37,9 @@ final class TemplateLayout {
     final List<Logo> logos = new ArrayList<>();
     private final Map<String, PointF> offsets = new LinkedHashMap<>();
 
+    private final Map<String, Float> scales = new LinkedHashMap<>();
+    private final Map<String, Integer> colors = new LinkedHashMap<>();
+
     TemplateLayout() {}
 
     TemplateLayout(String json, LogoReader reader) {
@@ -60,7 +63,21 @@ final class TemplateLayout {
                     (float) image.getDouble("x"), (float) image.getDouble("y"),
                     (float) image.getDouble("width"), (float) image.getDouble("height")));
             }
+            JSONObject appearance = data.optJSONObject("appearance");
+            if (appearance != null) {
+                java.util.Iterator<String> elements = appearance.keys();
+                while (elements.hasNext()) {
+                    String key = elements.next();
+                    JSONObject style = appearance.optJSONObject(key);
+                    if (style == null) continue;
+                    double scale = style.optDouble("scale", 1);
+                    if (scale >= .25 && scale <= 3) scales.put(key, (float) scale);
+                    if (style.has("color")) colors.put(key, style.getInt("color"));
+                }
+            }
         } catch (JSONException ignored) {
+            scales.clear();
+            colors.clear();
             offsets.clear();
             logos.clear();
         }
@@ -75,6 +92,17 @@ final class TemplateLayout {
         offsets.put(key, new PointF(x, y));
     }
 
+    float scale(String key) { return scales.containsKey(key) ? scales.get(key) : 1f; }
+
+    Integer color(String key) { return colors.get(key); }
+
+    void format(String key, float scale, Integer color) {
+        if (scale == 1f) scales.remove(key);
+        else scales.put(key, scale);
+        if (color == null) colors.remove(key);
+        else colors.put(key, color);
+    }
+
     void addLogo(Uri uri, Bitmap bitmap, android.graphics.RectF box) {
         logos.add(new Logo("logo:" + UUID.randomUUID(), uri, bitmap,
             box.left, box.top, box.width(), box.height()));
@@ -83,6 +111,8 @@ final class TemplateLayout {
     void removeLogo(String key) {
         logos.removeIf(logo -> logo.id.equals(key));
         offsets.remove(key);
+        scales.remove(key);
+        colors.remove(key);
     }
 
     String json() throws JSONException {
@@ -95,6 +125,15 @@ final class TemplateLayout {
             images.put(new JSONObject().put("id", logo.id).put("uri", logo.uri.toString())
                 .put("x", logo.x).put("y", logo.y).put("width", logo.width).put("height", logo.height));
         }
-        return new JSONObject().put("offsets", positions).put("logos", images).toString();
+        JSONObject appearance = new JSONObject();
+        java.util.Set<String> styled = new java.util.LinkedHashSet<>(scales.keySet());
+        styled.addAll(colors.keySet());
+        for (String key : styled) {
+            JSONObject style = new JSONObject().put("scale", scale(key));
+            if (colors.containsKey(key)) style.put("color", colors.get(key));
+            appearance.put(key, style);
+        }
+        return new JSONObject().put("offsets", positions).put("logos", images)
+            .put("appearance", appearance).toString();
     }
 }

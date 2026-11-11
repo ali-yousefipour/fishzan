@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ir.fishzan.app" android:versionCode="101" android:versionName="1.0.0">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ir.fishzan.app" android:versionCode="200" android:versionName="2.0.0">
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34"/>
     <queries><package android:name="ru.a402d.rawbtprinter"/></queries>
     <application android:label="فیش زن" android:icon="@drawable/fishzan_canva" android:theme="@style/AppTheme" android:supportsRtl="true" android:allowBackup="false">
