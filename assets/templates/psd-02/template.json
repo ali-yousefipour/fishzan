@@ -20,9 +20,9 @@
       -140.0
     ],
     "amount": [
-      562,
+      400,
       1037,
-      72,
+      58,
       1,
       1,
       0
@@ -47,12 +47,435 @@
       "mode": "comma"
     }
   },
-  "amountLeft": 170,
-  "labels": [],
+  "amountLeft": 95,
+  "labels": [
+    {
+      "text": "((ساندویچ ترنج))",
+      "font": "BKoodakBold.ttf",
+      "left": 306,
+      "right": 614,
+      "baseline": 60,
+      "size": 60,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "صورتحساب",
+      "font": "BKoodakBold.ttf",
+      "left": 369,
+      "right": 549,
+      "baseline": 145,
+      "size": 48,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شماره: ۱۰۲",
+      "font": "BKoodakBold.ttf",
+      "left": 644,
+      "right": 912,
+      "baseline": 217,
+      "size": 53,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "کاربر صندوق: مدیر",
+      "font": "BKoodakBold.ttf",
+      "left": 593,
+      "right": 912,
+      "baseline": 282,
+      "size": 53,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "کد اشتراک: ۶",
+      "font": "BKoodakBold.ttf",
+      "left": 642,
+      "right": 912,
+      "baseline": 344,
+      "size": 53,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "سفارش: بیرون بر پیش فرض",
+      "font": "BKoodakBold.ttf",
+      "left": 331,
+      "right": 912,
+      "baseline": 420,
+      "size": 58,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "نقد",
+      "font": "BKoodakBold.ttf",
+      "left": 413,
+      "right": 508,
+      "baseline": 499,
+      "size": 63,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "بیرون بر حضوری",
+      "font": "BKoodakBold.ttf",
+      "left": 253,
+      "right": 666,
+      "baseline": 585,
+      "size": 64,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "قیمت کل",
+      "font": "BKoodakBold.ttf",
+      "left": 5,
+      "right": 183,
+      "baseline": 666,
+      "size": 52,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "قیمت",
+      "font": "BKoodakBold.ttf",
+      "left": 188,
+      "right": 331,
+      "baseline": 666,
+      "size": 52,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "تعداد",
+      "font": "BKoodakBold.ttf",
+      "left": 335,
+      "right": 434,
+      "baseline": 666,
+      "size": 52,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "عنوان",
+      "font": "BKoodakBold.ttf",
+      "left": 438,
+      "right": 817,
+      "baseline": 666,
+      "size": 52,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "#",
+      "font": "BKoodakBold.ttf",
+      "left": 822,
+      "right": 915,
+      "baseline": 666,
+      "size": 52,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۲۳,۱۰۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 5,
+      "right": 183,
+      "baseline": 733,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۱,۰۵۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 188,
+      "right": 331,
+      "baseline": 733,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۲۲",
+      "font": "BYekan.ttf",
+      "left": 335,
+      "right": 434,
+      "baseline": 733,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "مرغ",
+      "font": "BYekan.ttf",
+      "left": 438,
+      "right": 817,
+      "baseline": 733,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۱",
+      "font": "BYekan.ttf",
+      "left": 822,
+      "right": 915,
+      "baseline": 733,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۱۵۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 5,
+      "right": 183,
+      "baseline": 878,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۵۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 188,
+      "right": 331,
+      "baseline": 878,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۳",
+      "font": "BYekan.ttf",
+      "left": 335,
+      "right": 434,
+      "baseline": 878,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "نان اضافه",
+      "font": "BYekan.ttf",
+      "left": 438,
+      "right": 817,
+      "baseline": 878,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۲",
+      "font": "BYekan.ttf",
+      "left": 822,
+      "right": 915,
+      "baseline": 878,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۳۶۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 5,
+      "right": 183,
+      "baseline": 956,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۳۰,۰۰۰",
+      "font": "BYekan.ttf",
+      "left": 188,
+      "right": 331,
+      "baseline": 956,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۱۲",
+      "font": "BYekan.ttf",
+      "left": 335,
+      "right": 434,
+      "baseline": 956,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "سس",
+      "font": "BYekan.ttf",
+      "left": 438,
+      "right": 817,
+      "baseline": 956,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۳",
+      "font": "BYekan.ttf",
+      "left": 822,
+      "right": 915,
+      "baseline": 956,
+      "size": 49,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "پرداختی:",
+      "font": "BKoodakBold.ttf",
+      "left": 759,
+      "right": 914,
+      "baseline": 1036,
+      "size": 54,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "ریال",
+      "font": "BKoodakBold.ttf",
+      "left": 7,
+      "right": 94,
+      "baseline": 1036,
+      "size": 54,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "فست فود زنجیره ای ۹۱",
+      "font": "BKoodakBold.ttf",
+      "left": 270,
+      "right": 650,
+      "baseline": 1123,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شعبه یک (ترنج): میدان ده دی ۰۵۱۳۸۵۸۳۰۳۰",
+      "font": "BKoodakBold.ttf",
+      "left": 123,
+      "right": 912,
+      "baseline": 1193,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شعبه دو (آویشن): میدان ده دی ۰۵۱۳۸۵۸۳۳۰۶",
+      "font": "BKoodakBold.ttf",
+      "left": 46,
+      "right": 879,
+      "baseline": 1254,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "شعبه سه (۹۱): بلوار جلال آل احمد/تقاطع فرهنگ",
+      "font": "BKoodakBold.ttf",
+      "left": 57,
+      "right": 872,
+      "baseline": 1329,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "۰۵۱۳۶۰۹۱۱۵۳",
+      "font": "BKoodakBold.ttf",
+      "left": 344,
+      "right": 575,
+      "baseline": 1391,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "تماس با مدیریت (انتقادها و پیشنهادها): ۰۹۱۵۸۹۰۱۸۹۱",
+      "font": "BKoodakBold.ttf",
+      "left": 5,
+      "right": 915,
+      "baseline": 1470,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "(جعفرزاده)",
+      "font": "BKoodakBold.ttf",
+      "left": 365,
+      "right": 557,
+      "baseline": 1535,
+      "size": 46,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    },
+    {
+      "text": "نرم افزار زعفران",
+      "font": "BKoodakBold.ttf",
+      "left": 379,
+      "right": 540,
+      "baseline": 1640,
+      "size": 31,
+      "scale": 1,
+      "white": false,
+      "latin": false
+    }
+  ],
   "logoBox": [
     16,
     9,
     220,
     87
+  ],
+  "noteBox": [
+    590,
+    1598
   ]
 }

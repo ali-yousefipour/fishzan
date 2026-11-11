@@ -23,7 +23,7 @@ final class Template {
     final double widthMm;
     final double heightMm;
     final double amountLeft;
-    private final JSONArray logoBox;
+    private final JSONArray logoBox, noteBox;
     private final java.util.List<PrintedLabel> labels = new java.util.ArrayList<>();
 
     private static final class PrintedLabel {
@@ -47,6 +47,7 @@ final class Template {
         heightMm = data.getDouble("heightMm");
         amountLeft = data.getDouble("amountLeft");
         logoBox = data.optJSONArray("logoBox");
+        noteBox = data.optJSONArray("noteBox");
         try (InputStream in = open(context, asset, dir, "paper.png")) {
             byte[] png = read(in);
             BitmapFactory.Options options = new BitmapFactory.Options();
@@ -185,15 +186,12 @@ final class Template {
             label.setColor(Color.BLACK);
             label.setTextSize(28);
             label.setTextAlign(Paint.Align.CENTER);
+            float x = noteBox == null ? paper.getWidth() / 2f : (float) noteBox.optDouble(0);
+            float y = noteBox == null ? paper.getHeight() - 70 : (float) noteBox.optDouble(1);
+            float available = 2 * Math.min(x - 24, paper.getWidth() - x - 24);
             float width = label.measureText(note);
-            if (width > paper.getWidth() - 48) label.setTextScaleX((paper.getWidth() - 48) / width);
-            int y = paper.getHeight() > 1200 ? paper.getHeight() - 28 : paper.getHeight() - 70;
-            if (paper.getHeight() > 1200) {
-                label.setColor(Color.WHITE);
-                canvas.drawRect(8, y - 29, paper.getWidth() - 8, y + 5, label);
-                label.setColor(Color.BLACK);
-            }
-            canvas.drawText(note, paper.getWidth() / 2f, y, label);
+            if (available > 0 && width > available) label.setTextScaleX(available / width);
+            canvas.drawText(note, x, y, label);
         }
         if (!value.isEmpty()) {
             String grouped = String.format(Locale.US, "%,d", Long.parseLong(value));
