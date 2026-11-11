@@ -446,7 +446,7 @@ public final class MainActivity extends Activity {
 
     private void showLayoutEditor(int index, TemplateLayout draft, JSONArray labels, String note) {
         layoutEditor = new LayoutEditor(this, templates.get(index), draft,
-            labels, note, this::chooseTemplateImage, () -> saveLayout(index, null), () -> {
+            labels, note, this::showBuiltInLogos, this::chooseTemplateImage, () -> saveLayout(index, null), () -> {
                 EditText name = new EditText(this);
                 name.setSingleLine();
                 name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(60)});
@@ -507,19 +507,20 @@ public final class MainActivity extends Activity {
     private static final String[] LOGO_NAMES = {"پاسارگاد", "به‌پرداخت", "سامان کیش", "سداد", "پارسیان", "شاپرک"};
 
     private void chooseTemplateImage() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*")
+            .addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, 2);
+    }
+
+    private void showBuiltInLogos() {
         LinearLayout items = new LinearLayout(this);
         items.setOrientation(LinearLayout.VERTICAL);
         items.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         items.setPadding(dp(16), 0, dp(16), 0);
         ScrollView scroll = new ScrollView(this);
         scroll.addView(items);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("افزودن تصویر یا لوگو")
-            .setView(scroll).setNegativeButton("انصراف", null)
-            .setNeutralButton("انتخاب از گوشی", (window, which) -> {
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*")
-                    .addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(intent, 2);
-            }).create();
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("لوگوهای آماده")
+            .setView(scroll).setNegativeButton("بستن", null).create();
         for (int i = 0; i < LOGO_FILES.length; i++) {
             Uri uri = new Uri.Builder().scheme(BUILTIN_LOGO).path("/" + LOGO_FILES[i]).build();
             try {
@@ -528,15 +529,19 @@ public final class MainActivity extends Activity {
                 item.setGravity(android.view.Gravity.CENTER_VERTICAL);
                 ImageView thumbnail = new ImageView(this);
                 thumbnail.setImageBitmap(bitmap);
+                thumbnail.setBackgroundColor(Color.WHITE);
                 thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 thumbnail.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
                 item.addView(thumbnail, new LinearLayout.LayoutParams(dp(64), dp(42)));
-                button(item, LOGO_NAMES[i], () -> {
+                Runnable add = () -> {
                     if (layoutEditor != null) layoutEditor.addLogo(uri, bitmap);
                     dialog.dismiss();
-                });
+                };
+                button(item, LOGO_NAMES[i], add);
+                thumbnail.setOnClickListener(view -> add.run());
             } catch (java.io.IOException e) {
                 android.util.Log.w("Fishzan", "Built-in logo unavailable", e);
+                label(items, "تصویر " + LOGO_NAMES[i] + " باز نشد.");
             }
         }
         dialog.show();
@@ -817,11 +822,11 @@ public final class MainActivity extends Activity {
             if (!java.util.Arrays.asList(LOGO_FILES).contains(filename)) {
                 throw new java.io.IOException("unknown built-in logo");
             }
-            try (InputStream input = BundledAssets.open(this, "logos/" + filename)) {
-                Bitmap bitmap = BitmapFactory.decodeStream(input);
-                if (bitmap == null) throw new java.io.IOException("built-in logo");
-                return bitmap;
-            }
+            String name = "logo_" + filename.substring(0, filename.lastIndexOf('.'));
+            int id = getResources().getIdentifier(name, "drawable", getPackageName());
+            Bitmap bitmap = id == 0 ? null : BitmapFactory.decodeResource(getResources(), id);
+            if (bitmap == null) throw new java.io.IOException("built-in logo " + name);
+            return bitmap;
         }
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;

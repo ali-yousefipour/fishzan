@@ -38,7 +38,7 @@ final class LayoutEditor {
     private String selected;
 
     LayoutEditor(Context context, Template template, TemplateLayout layout, JSONArray labels,
-        String note, Runnable chooseLogo, Runnable save, Runnable saveCopy, Runnable close) {
+        String note, Runnable showLogos, Runnable chooseImage, Runnable save, Runnable saveCopy, Runnable close) {
         this.context = context;
         this.template = template;
         this.layout = layout;
@@ -59,12 +59,18 @@ final class LayoutEditor {
         picker.setMinimumHeight(dp(48));
         content.addView(picker, new LinearLayout.LayoutParams(-1, -2));
 
+        LinearLayout images = new LinearLayout(context);
+        content.addView(images);
+        Button logos = new Button(context);
+        logos.setText("لوگوهای آماده");
+        logos.setOnClickListener(view -> showLogos.run());
+        images.addView(logos, new LinearLayout.LayoutParams(0, -2, 1));
+        Button add = new Button(context);
+        add.setText("تصویر از گوشی");
+        add.setOnClickListener(view -> chooseImage.run());
+        images.addView(add, new LinearLayout.LayoutParams(0, -2, 1));
         LinearLayout actions = new LinearLayout(context);
         content.addView(actions);
-        Button add = new Button(context);
-        add.setText("افزودن تصویر");
-        add.setOnClickListener(view -> chooseLogo.run());
-        actions.addView(add, new LinearLayout.LayoutParams(0, -2, 1));
         remove = new Button(context);
         remove.setText("حذف تصویر");
         remove.setOnClickListener(view -> {
@@ -83,7 +89,7 @@ final class LayoutEditor {
         appearance.setText("اندازه و رنگ");
         appearance.setMinimumHeight(dp(48));
         appearance.setOnClickListener(view -> editAppearance());
-        content.addView(appearance, new LinearLayout.LayoutParams(-1, -2));
+        actions.addView(appearance, new LinearLayout.LayoutParams(0, -2, 1));
 
         preview = new Preview(context);
         content.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1));
