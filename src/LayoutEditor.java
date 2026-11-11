@@ -28,21 +28,24 @@ final class LayoutEditor {
     private final Template template;
     private final TemplateLayout layout;
     private final JSONArray labels;
-    private final String note;
+    private String note;
     private final Map<String, RectF> bounds = new HashMap<>();
     private final List<String> keys = new ArrayList<>();
     private final Spinner picker;
-    private final Button remove;
+    private final Button remove, edit;
     private final Preview preview;
     private final AlertDialog dialog;
     private String selected;
 
     LayoutEditor(Context context, Template template, TemplateLayout layout, JSONArray labels,
-        String note, Runnable chooseLogo, Runnable save, Runnable close) {
+        String note, Runnable chooseLogo, Runnable save, Runnable saveCopy, Runnable close) {
         this.context = context;
         this.template = template;
         this.layout = layout;
         this.labels = labels;
+        for (int i = labels.length(); i < template.labelTexts().size(); i++) {
+            labels.put(template.labelTexts().get(i));
+        }
         this.note = note;
 
         LinearLayout content = new LinearLayout(context);
@@ -50,7 +53,7 @@ final class LayoutEditor {
         content.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         content.setPadding(dp(16), dp(8), dp(16), 0);
         TextView instructions = new TextView(context);
-        instructions.setText("در پیش‌نمایش نمونه، عنصر را انتخاب کنید و روی فیش بکشید.");
+        instructions.setText("برای انتخاب روی عنصر بزنید. برای جابه‌جایی، آن را بکشید.");
         content.addView(instructions);
         picker = new Spinner(context);
         picker.setMinimumHeight(dp(48));
@@ -71,6 +74,10 @@ final class LayoutEditor {
             }
         });
         actions.addView(remove, new LinearLayout.LayoutParams(0, -2, 1));
+        edit = new Button(context);
+        edit.setText("ویرایش متن");
+        edit.setOnClickListener(view -> editText());
+        actions.addView(edit, new LinearLayout.LayoutParams(0, -2, 1));
 
         preview = new Preview(context);
         content.addView(preview, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -83,22 +90,42 @@ final class LayoutEditor {
         updateOptions(null);
         dialog = new AlertDialog.Builder(context).setTitle("چیدمان و لوگوهای قالب")
             .setView(content).setNegativeButton("انصراف", null)
-            .setPositiveButton("ذخیره", null).create();
+            .setPositiveButton("ذخیره", null).setNeutralButton("ذخیره با نام جدید", null).create();
         dialog.setOnDismissListener(ignored -> close.run());
         dialog.show();
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> save.run());
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> saveCopy.run());
         dialog.getWindow().setLayout(-1, -1);
     }
 
     TemplateLayout layout() { return layout; }
+    JSONArray labels() { return labels; }
+    String note() { return note; }
+
+    private void editText() {
+        String key = selected;
+        boolean footer = key.equals("note");
+        int index = footer ? -1 : Integer.parseInt(key.substring("label:".length()));
+        android.widget.EditText input = new android.widget.EditText(context);
+        input.setSingleLine();
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(140)});
+        input.setText(footer ? note : labels.optString(index));
+        input.setSelectAllOnFocus(true);
+        new AlertDialog.Builder(context).setTitle("ویرایش متن فیش").setView(input)
+            .setNegativeButton("انصراف", null).setPositiveButton("ثبت", (dialog, which) -> {
+                String value = input.getText().toString().trim();
+                if (footer) note = value;
+                else {
+                    try { labels.put(index, value); }
+                    catch (org.json.JSONException e) { throw new IllegalStateException(e); }
+                }
+                updateOptions(key);
+            }).show();
+    }
 
     void dismiss() { dialog.dismiss(); }
 
     void addLogo(Uri uri, Bitmap bitmap) {
-        if (layout.logos.size() >= 12) {
-            android.widget.Toast.makeText(context, "هر قالب تا ۱۲ لوگو می‌پذیرد.", android.widget.Toast.LENGTH_SHORT).show();
-            return;
-        }
         layout.addLogo(uri, bitmap, template.logoPosition(bitmap, layout.logos.size(), false));
         updateOptions(layout.logos.get(layout.logos.size() - 1).id);
     }
@@ -123,6 +150,7 @@ final class LayoutEditor {
     private void select(String key) {
         selected = key;
         remove.setEnabled(key.startsWith("logo:"));
+        edit.setEnabled(key.startsWith("label:") || key.equals("note"));
         preview.invalidate();
     }
 
@@ -181,6 +209,13 @@ final class LayoutEditor {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     dragging = page.contains(event.getX(), event.getY());
+                    if (dragging) {
+                        String hit = hitTest(x, y);
+                        if (hit != null) {
+                            picker.setSelection(keys.indexOf(hit));
+                            select(hit);
+                        }
+                    }
                     previousX = x;
                     previousY = y;
                     return dragging;
@@ -188,8 +223,8 @@ final class LayoutEditor {
                     RectF box = bounds.get(selected);
                     if (!dragging || box == null) return false;
                     PointF offset = layout.offset(selected);
-                    float dx = clamp(x - previousX, -box.left, template.paper.getWidth() - box.right);
-                    float dy = clamp(y - previousY, -box.top, template.paper.getHeight() - box.bottom);
+                    float dx = clamp(x - previousX, -box.left, template.paperWidth - box.right);
+                    float dy = clamp(y - previousY, -box.top, template.paperHeight - box.bottom);
                     layout.move(selected, offset.x + dx, offset.y + dy);
                     previousX = x;
                     previousY = y;
@@ -205,6 +240,29 @@ final class LayoutEditor {
                 default:
                     return dragging;
             }
+        }
+
+        private String hitTest(float x, float y) {
+            for (int i = keys.size() - 1; i >= 0; i--) {
+                String key = keys.get(i);
+                RectF box = bounds.get(key);
+                if (!key.startsWith("rule:") && box != null && box.contains(x, y)) return key;
+            }
+            float slop = dp(12) / scale;
+            String nearest = null;
+            float best = slop * slop;
+            for (String key : keys) {
+                RectF box = bounds.get(key);
+                if (box == null) continue;
+                float dx = Math.max(0, Math.max(box.left - x, x - box.right));
+                float dy = Math.max(0, Math.max(box.top - y, y - box.bottom));
+                float distance = dx * dx + dy * dy;
+                if (distance < best) {
+                    best = distance;
+                    nearest = key;
+                }
+            }
+            return nearest;
         }
 
         @Override public boolean performClick() {

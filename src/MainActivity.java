@@ -2,7 +2,6 @@ package ir.fishzan.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.TimePickerDialog;
 import android.content.res.ColorStateList;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -74,68 +73,76 @@ public final class MainActivity extends Activity {
         title.setPadding(dp(12), 0, dp(12), 0);
         title.setTypeface(null, Typeface.BOLD);
         title.setTextSize(27);
-        label(layout, "قالب فیش").setPadding(0, dp(20), 0, 0);
+        LinearLayout templatesPanel = panel(layout, "قالب فیش");
         picker = new Spinner(this);
         picker.setMinimumHeight(dp(48));
-        layout.addView(picker, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout templateActions = row(layout);
-        button(templateActions, "افزودن قالب", () -> {
+        templatesPanel.addView(picker, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout templateActions = row(templatesPanel);
+        button(templateActions, "ورود قالب از ZIP", () -> {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("*/*");
+            intent.setType("application/zip");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(intent, 1);
         });
         button(templateActions, "ویرایش قالب", this::editTemplate);
-        button(layout, "چیدمان و لوگوهای قالب", this::editLayout);
-        label(layout, "مبلغ به ریال").setPadding(0, dp(20), 0, 0);
-        amount = input(layout, "مثلاً ۲۰۷۵۰۰۰۰", InputType.TYPE_CLASS_NUMBER, 12);
-        label(layout, "تاریخ شمسی و ساعت");
+        button(templatesPanel, "چیدمان و لوگوها", this::editLayout);
+        LinearLayout form = panel(layout, "اطلاعات فیش");
+        label(form, "مبلغ به ریال");
+        amount = input(form, "مثلاً ۲۰۷۵۰۰۰۰", InputType.TYPE_CLASS_NUMBER, 12);
+        label(form, "تاریخ شمسی و ساعت");
         date = new EditText(this);
         if (state != null) selectedDate.setTimeInMillis(state.getLong("selectedDate", selectedDate.getTimeInMillis()));
-        LinearLayout dateActions = row(layout);
+        LinearLayout dateActions = row(form);
         dateButton = button(dateActions, "", () -> PersianDateDialog.show(this, selectedDate, chosen -> {
             selectedDate.set(Calendar.YEAR, chosen.get(Calendar.YEAR));
             selectedDate.set(Calendar.MONTH, chosen.get(Calendar.MONTH));
             selectedDate.set(Calendar.DAY_OF_MONTH, chosen.get(Calendar.DAY_OF_MONTH));
             updateDate();
         }));
-        timeButton = button(dateActions, "", () -> new TimePickerDialog(this, (view, hour, minute) -> {
-            selectedDate.set(Calendar.HOUR_OF_DAY, hour);
-            selectedDate.set(Calendar.MINUTE, minute);
-            selectedDate.set(Calendar.SECOND, 0);
-            updateDate();
-        }, selectedDate.get(Calendar.HOUR_OF_DAY), selectedDate.get(Calendar.MINUTE), true).show());
+        timeButton = button(dateActions, "", this::chooseTime);
         updateDate();
-        trackingLabel = label(layout, "شمارهٔ پیگیری");
-        tracking = input(layout, "", InputType.TYPE_CLASS_NUMBER, 40);
-        referenceLabel = label(layout, "شمارهٔ مرجع");
-        reference = input(layout, "", InputType.TYPE_CLASS_NUMBER, 40);
-        print = button(layout, "چاپ فیش", this::print);
+        trackingLabel = label(form, "شمارهٔ پیگیری");
+        tracking = input(form, "", InputType.TYPE_CLASS_NUMBER, 40);
+        referenceLabel = label(form, "شمارهٔ مرجع");
+        reference = input(form, "", InputType.TYPE_CLASS_NUMBER, 40);
+        print = button(layout, "چاپ PDF", this::print);
         print.setTextColor(Color.WHITE);
         print.setBackgroundTintList(new ColorStateList(
             new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}},
             new int[]{0xff697670, 0xff246456}));
         status = label(layout, "");
-        label(layout, "پیش‌نمایش").setPadding(0, dp(12), 0, dp(8));
+        LinearLayout previewPanel = panel(layout, "پیش‌نمایش");
         status.setTextColor(0xffa52714);
         preview = new ImageView(this);
         preview.setAdjustViewBounds(true);
         preview.setBackgroundColor(Color.WHITE);
         preview.setContentDescription("پیش‌نمایش فیش");
-        layout.addView(preview, new LinearLayout.LayoutParams(-1, -2));
+        preview.setOnClickListener(view -> editLayout());
+        preview.setContentDescription("پیش‌نمایش فیش، برای ویرایش چیدمان ضربه بزنید");
+        previewPanel.addView(preview, new LinearLayout.LayoutParams(-1, -2));
 
         try {
-            for (String name : getAssets().list("templates")) {
-                add(new Template(this, "templates/" + name, null), "asset:" + name);
+            String[] assets = getAssets().list("templates");
+            if (assets != null) for (String name : assets) {
+                try {
+                    add(new Template(this, "templates/" + name, null), "asset:" + name);
+                } catch (Exception e) {
+                    android.util.Log.w("Fishzan", "Could not load template " + name, e);
+                }
             }
-        } catch (Exception e) {
-            status.setText("بارگیری قالب همراه برنامه ناموفق بود.");
+        } catch (java.io.IOException e) {
+            android.util.Log.w("Fishzan", "Could not list bundled templates", e);
         }
         File[] imported = getDir("templates", MODE_PRIVATE).listFiles();
-        if (imported != null) for (File dir : imported) {
-            try { add(new Template(this, null, dir), "file:" + dir.getName()); }
-            catch (Exception ignored) { /* Incomplete template directories are excluded. */ }
+        if (imported != null) {
+            java.util.Arrays.sort(imported);
+            for (File dir : imported) {
+                try { add(new Template(this, null, dir), "file:" + dir.getName()); }
+                catch (Exception e) { android.util.Log.w("Fishzan", "Could not load imported template", e); }
+            }
         }
+        restoreCopies();
+        if (templates.isEmpty()) status.setText("قالبی پیدا نشد. یک فایل ZIP قالب وارد کنید.");
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, names);
         picker.setAdapter(adapter);
         picker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -157,6 +164,8 @@ public final class MainActivity extends Activity {
         if (!templates.isEmpty()) {
             int index = state == null ? 0 : Math.min(state.getInt("selection"), templates.size() - 1);
             if (state != null) {
+                int restored = templateIds.indexOf(state.getString("selectedTemplate"));
+                if (restored >= 0) index = restored;
                 amount.setText(state.getString("amount"));
                 tracking.setText(state.getString("tracking", ""));
                 reference.setText(state.getString("reference", ""));
@@ -164,16 +173,25 @@ public final class MainActivity extends Activity {
             picker.setSelection(index);
             select(index);
             String draft = state == null ? null : state.getString("layoutDraft");
-            if (draft != null) showLayoutEditor(index, new TemplateLayout(draft, this::loadLogo));
+            if (draft != null) {
+                JSONArray edited = templateLabels();
+                try { edited = new JSONArray(state.getString("layoutLabels", edited.toString())); }
+                catch (JSONException ignored) {}
+                showLayoutEditor(index, new TemplateLayout(draft, this::loadLogo), edited,
+                    state.getString("layoutNote", templateNote()));
+            }
         }
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putInt("selection", Math.max(0, selection));
+        if (selection >= 0) state.putString("selectedTemplate", templateIds.get(selection));
         if (layoutEditor != null) {
             try { state.putString("layoutDraft", layoutEditor.layout().json()); }
             catch (JSONException ignored) {}
+            state.putString("layoutLabels", layoutEditor.labels().toString());
+            state.putString("layoutNote", layoutEditor.note());
         }
         state.putString("amount", amount.getText().toString());
         state.putLong("selectedDate", selectedDate.getTimeInMillis());
@@ -183,6 +201,24 @@ public final class MainActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private LinearLayout panel(LinearLayout parent, String title) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(14), dp(12), dp(14), dp(14));
+        GradientDrawable surface = new GradientDrawable();
+        surface.setColor(Color.WHITE);
+        surface.setCornerRadius(dp(14));
+        surface.setStroke(dp(1), 0xffdce5df);
+        panel.setBackground(surface);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(14);
+        parent.addView(panel, params);
+        TextView heading = label(panel, title);
+        heading.setTextSize(21);
+        heading.setPadding(0, 0, 0, dp(6));
+        return panel;
     }
 
     private TextView label(LinearLayout layout, String caption) {
@@ -236,20 +272,68 @@ public final class MainActivity extends Activity {
         return row;
     }
 
+    private void chooseTime() {
+        LinearLayout row = new LinearLayout(this);
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
+        row.setPadding(dp(16), dp(8), dp(16), dp(8));
+        int[] fields = {Calendar.HOUR_OF_DAY, Calendar.MINUTE, Calendar.SECOND};
+        String[] captions = {"ساعت", "دقیقه", "ثانیه"};
+        NumberPicker[] numbers = new NumberPicker[fields.length];
+        for (int i = 0; i < fields.length; i++) {
+            LinearLayout group = new LinearLayout(this);
+            group.setOrientation(LinearLayout.VERTICAL);
+            group.setGravity(android.view.Gravity.CENTER);
+            row.addView(group, new LinearLayout.LayoutParams(0, -2, 1));
+            label(group, captions[i]);
+            NumberPicker number = new NumberPicker(this);
+            number.setMinValue(0);
+            number.setMaxValue(i == 0 ? 23 : 59);
+            number.setFormatter(value -> String.format(new Locale("fa"), "%02d", value));
+            number.setValue(selectedDate.get(fields[i]));
+            number.setContentDescription(captions[i]);
+            group.addView(number);
+            numbers[i] = number;
+        }
+        new AlertDialog.Builder(this).setTitle("انتخاب زمان")
+            .setView(row).setNegativeButton("انصراف", null).setPositiveButton("تأیید", (dialog, which) -> {
+                for (int i = 0; i < fields.length; i++) {
+                    numbers[i].clearFocus();
+                    selectedDate.set(fields[i], numbers[i].getValue());
+                }
+                updateDate();
+            }).show();
+    }
+
     private void updateDate() {
         String day = String.format(Locale.US, "%04d/%02d/%02d", selectedDate.get(Calendar.YEAR),
             selectedDate.get(Calendar.MONTH) + 1, selectedDate.get(Calendar.DAY_OF_MONTH));
         String clock = String.format(Locale.US, "%02d:%02d:%02d", selectedDate.get(Calendar.HOUR_OF_DAY),
             selectedDate.get(Calendar.MINUTE), selectedDate.get(Calendar.SECOND));
-        dateButton.setText("تاریخ  " + day);
-        timeButton.setText("ساعت  " + clock.substring(0, 5));
+        dateButton.setText("تاریخ  " + persianDigits(day));
+        timeButton.setText("ساعت  " + persianDigits(clock));
         date.setText(day + " " + clock);
+    }
+
+    private String persianDigits(String text) {
+        StringBuilder value = new StringBuilder();
+        for (char c : text.toCharArray()) value.append(c >= '0' && c <= '9' ? (char) ('۰' + c - '0') : c);
+        return value.toString();
     }
 
     private void add(Template template, String id) {
         templates.add(template);
         templateIds.add(id);
         names.add(getPreferences(MODE_PRIVATE).getString(id + ":name", template.name));
+    }
+
+    private void restoreCopies() {
+        android.content.SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        List<String> ids = new ArrayList<>(prefs.getStringSet("copies", java.util.Collections.emptySet()));
+        java.util.Collections.sort(ids);
+        for (String id : ids) {
+            int original = templateIds.indexOf(prefs.getString(id + ":source", ""));
+            if (original >= 0) add(templates.get(original), id);
+        }
     }
 
     private String templateNote() {
@@ -331,28 +415,69 @@ public final class MainActivity extends Activity {
 
     private void editLayout() {
         if (selection < 0) return;
-        showLayoutEditor(selection, loadLayout(selection));
+        showLayoutEditor(selection, loadLayout(selection), templateLabels(), templateNote());
     }
 
-    private void showLayoutEditor(int index, TemplateLayout draft) {
+    private void showLayoutEditor(int index, TemplateLayout draft, JSONArray labels, String note) {
         layoutEditor = new LayoutEditor(this, templates.get(index), draft,
-            templateLabels(), templateNote(), () -> {
+            labels, note, () -> {
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.setType("image/*");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 startActivityForResult(intent, 2);
-            }, () -> {
-                try {
-                    TemplateLayout edited = layoutEditor.layout();
-                    getPreferences(MODE_PRIVATE).edit()
-                        .putString(templateIds.get(index) + ":layout", edited.json()).apply();
-                    activeLayout = edited;
-                    layoutEditor.dismiss();
-                    refresh();
-                } catch (JSONException e) {
-                    Toast.makeText(this, "ذخیرهٔ چیدمان ممکن نبود.", Toast.LENGTH_LONG).show();
-                }
+            }, () -> saveLayout(index, null), () -> {
+                EditText name = new EditText(this);
+                name.setSingleLine();
+                name.setFilters(new InputFilter[]{new InputFilter.LengthFilter(60)});
+                name.setHint("نام قالب جدید");
+                AlertDialog dialog = new AlertDialog.Builder(this).setTitle("ذخیره با نام جدید")
+                    .setView(name).setNegativeButton("انصراف", null).setPositiveButton("ذخیره", null).create();
+                dialog.show();
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+                    String title = name.getText().toString().trim();
+                    if (title.isEmpty() || names.contains(title)) {
+                        name.setError("نام تازه‌ای برای قالب وارد کنید.");
+                        return;
+                    }
+                    if (saveLayout(index, title)) dialog.dismiss();
+                });
             }, () -> layoutEditor = null);
+    }
+
+    private boolean saveLayout(int index, String copyName) {
+        android.content.SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        String id = templateIds.get(index);
+        String target = id;
+        TemplateLayout edited = layoutEditor.layout();
+        android.content.SharedPreferences.Editor editor = prefs.edit();
+        try {
+            if (copyName != null) {
+                target = "copy:" + UUID.randomUUID();
+                java.util.Set<String> copies = new java.util.HashSet<>(
+                    prefs.getStringSet("copies", java.util.Collections.emptySet()));
+                copies.add(target);
+                editor.putStringSet("copies", copies).putString(target + ":name", copyName)
+                    .putString(target + ":source", prefs.getString(id + ":source", id));
+            }
+            boolean saved = editor.putString(target + ":layout", edited.json())
+                .putString(target + ":labels", layoutEditor.labels().toString())
+                .putString(target + ":note", layoutEditor.note()).commit();
+            if (!saved) throw new java.io.IOException("save");
+            layoutEditor.dismiss();
+            if (copyName == null) {
+                activeLayout = edited;
+                refresh();
+            } else {
+                add(templates.get(index), target);
+                adapter.notifyDataSetChanged();
+                picker.setSelection(templates.size() - 1);
+                select(templates.size() - 1);
+            }
+            return true;
+        } catch (JSONException | java.io.IOException e) {
+            Toast.makeText(this, "ذخیرهٔ چیدمان ممکن نبود.", Toast.LENGTH_LONG).show();
+            return false;
+        }
     }
 
     private Bitmap loadLogo(Uri uri) throws java.io.IOException {
@@ -435,8 +560,16 @@ public final class MainActivity extends Activity {
             .setColorMode(PrintAttributes.COLOR_MODE_MONOCHROME)
             .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
             .build();
-        manager.print("فیش " + template.name, new ReceiptPrint(template.render(ascii(amount.getText().toString()), date.getText().toString(),
-            ascii(tracking.getText().toString()), ascii(reference.getText().toString()), activeLayout, templateNote(), templateLabels(), 2), template), attributes);
+        String filename = "فیش " + names.get(selection).replaceAll("[^\\p{L}\\p{N} _-]", " ") + ".pdf";
+        String money = ascii(amount.getText().toString());
+        String timestamp = date.getText().toString();
+        String trace = ascii(tracking.getText().toString());
+        String ref = ascii(reference.getText().toString());
+        TemplateLayout layout = activeLayout;
+        String note = templateNote();
+        JSONArray labels = templateLabels();
+        manager.print(filename, new ReceiptPrint(filename, template,
+            canvas -> template.drawPage(canvas, money, timestamp, trace, ref, layout, note, labels, null)), attributes);
     }
 
     private Bitmap readLogo(Uri uri) throws java.io.IOException {
@@ -473,40 +606,67 @@ public final class MainActivity extends Activity {
             return;
         }
         if (request != 1) return;
-        File dir = new File(getDir("templates", MODE_PRIVATE), UUID.randomUUID().toString());
+        importTemplates(data.getData());
+    }
+
+    private void importTemplates(Uri uri) {
+        File storage = getDir("templates", MODE_PRIVATE);
+        java.util.Map<String, File> folders = new java.util.LinkedHashMap<>();
+        List<Template> incoming = new ArrayList<>();
         try {
-            if (!dir.mkdir()) throw new java.io.IOException();
-            int total = 0;
-            try (InputStream input = getContentResolver().openInputStream(data.getData());
+            long total = 0;
+            try (InputStream input = getContentResolver().openInputStream(uri);
                  ZipInputStream zip = new ZipInputStream(input)) {
                 ZipEntry entry;
                 byte[] buffer = new byte[8192];
                 while ((entry = zip.getNextEntry()) != null) {
-                    String file = entry.getName();
-                    if (!(file.equals("template.json") || file.matches("[A-Za-z0-9_-]+[.]ttf") || file.equals("paper.png"))) {
-                        throw new java.io.IOException();
+                    String name = entry.getName();
+                    if (entry.isDirectory()) continue;
+                    String[] path = name.split("/", -1);
+                    if (path.length > 2 || (path.length == 2 && !path[0].matches("[A-Za-z0-9_-]+"))) {
+                        throw new java.io.IOException("folder");
                     }
-                    File target = new File(dir, file);
-                    if (!target.createNewFile()) throw new java.io.IOException();
+                    String file = path[path.length - 1];
+                    if (!(file.equals("template.json") || file.matches("[A-Za-z0-9_-]+[.]ttf") || file.equals("paper.png"))) {
+                        throw new java.io.IOException("entry");
+                    }
+                    String key = path.length == 1 ? "" : path[0];
+                    File folder = folders.get(key);
+                    if (folder == null) {
+                        if (folders.size() >= 50) throw new java.io.IOException("count");
+                        folder = new File(storage, UUID.randomUUID().toString());
+                        if (!folder.mkdir()) throw new java.io.IOException("mkdir");
+                        folders.put(key, folder);
+                    }
+                    File target = new File(folder, file);
+                    if (!target.createNewFile()) throw new java.io.IOException("duplicate");
                     try (FileOutputStream out = new FileOutputStream(target)) {
                         int read;
                         while ((read = zip.read(buffer)) != -1) {
                             total += read;
-                            if (total > 8 * 1024 * 1024) throw new java.io.IOException();
+                            if (total > 96 * 1024 * 1024) throw new java.io.IOException("size");
                             out.write(buffer, 0, read);
                         }
                     }
                 }
             }
-            add(new Template(this, null, dir), "file:" + dir.getName());
+            if (folders.isEmpty()) throw new java.io.IOException("empty");
+            for (File folder : folders.values()) incoming.add(new Template(this, null, folder));
+            int first = templates.size();
+            int index = 0;
+            for (File folder : folders.values()) add(incoming.get(index++), "file:" + folder.getName());
             adapter.notifyDataSetChanged();
-            picker.setSelection(templates.size() - 1);
+            picker.setSelection(first);
+            select(first);
+            Toast.makeText(this, String.format("%d قالب وارد شد.", incoming.size()), Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            File[] files = dir.listFiles();
-            if (files != null) for (File file : files) file.delete();
-            dir.delete();
-            Toast.makeText(this, "فایل قالب معتبر نیست.", Toast.LENGTH_LONG).show();
+            android.util.Log.w("Fishzan", "Could not import templates", e);
+            for (File folder : folders.values()) {
+                File[] files = folder.listFiles();
+                if (files != null) for (File file : files) file.delete();
+                folder.delete();
+            }
+            Toast.makeText(this, "بستهٔ ZIP قالب باز نشد. ساختار و فایل‌های آن را بررسی کنید.", Toast.LENGTH_LONG).show();
         }
     }
 }
-

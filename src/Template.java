@@ -18,7 +18,12 @@ import org.json.JSONObject;
 
 final class Template {
     final String name;
-    final Bitmap paper;
+    final int paperWidth, paperHeight;
+    private final Context context;
+    private final String asset;
+    private final File directory;
+    private java.lang.ref.WeakReference<Bitmap> cachedPaper = new java.lang.ref.WeakReference<>(null);
+    private final JSONArray rules;
     private final java.util.Map<JSONArray, Typeface> fonts = new java.util.HashMap<>();
     private final java.util.Map<JSONArray, JSONObject> styles = new java.util.HashMap<>();
     private final String terminalSuffix, referencePrefix;
@@ -40,6 +45,9 @@ final class Template {
     final JSONArray amount, date, time, tracking, reference;
 
     Template(Context context, String asset, File dir) throws Exception {
+        this.context = context.getApplicationContext();
+        this.asset = asset;
+        this.directory = dir;
         JSONObject data;
         try (InputStream in = open(context, asset, dir, "template.json")) {
             data = new JSONObject(new String(read(in), StandardCharsets.UTF_8).trim());
@@ -50,18 +58,19 @@ final class Template {
         amountLeft = data.getDouble("amountLeft");
         logoBox = data.optJSONArray("logoBox");
         noteBox = data.optJSONArray("noteBox");
+        rules = data.optJSONArray("rules");
         try (InputStream in = open(context, asset, dir, "paper.png")) {
-            byte[] png = read(in);
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
-            BitmapFactory.decodeByteArray(png, 0, png.length, options);
+            BitmapFactory.decodeStream(in, null, options);
             if (options.outWidth < 1 || options.outWidth > 2000 ||
                 options.outHeight < 1 || options.outHeight > 5000) {
                 throw new IllegalArgumentException("ابعاد تصویر قالب نامعتبر است.");
             }
-            paper = BitmapFactory.decodeByteArray(png, 0, png.length);
+            paperWidth = options.outWidth;
+            paperHeight = options.outHeight;
         }
-        if (paper == null || name.isEmpty() || name.length() > 60 ||
+        if (name.isEmpty() || name.length() > 60 ||
             !(widthMm >= 20 && widthMm <= 120 && heightMm >= 20 && heightMm <= 500)) {
             throw new IllegalArgumentException("مشخصات قالب نامعتبر است.");
         }
@@ -105,6 +114,20 @@ final class Template {
         }
     }
 
+    private Bitmap paper() {
+        Bitmap bitmap = cachedPaper.get();
+        if (bitmap == null) {
+            try (InputStream in = open(context, asset, directory, "paper.png")) {
+                bitmap = BitmapFactory.decodeStream(in);
+            } catch (Exception e) {
+                throw new IllegalStateException("تصویر قالب باز نشد.", e);
+            }
+            if (bitmap == null) throw new IllegalStateException("تصویر قالب نامعتبر است.");
+            cachedPaper = new java.lang.ref.WeakReference<>(bitmap);
+        }
+        return bitmap;
+    }
+
     private byte[] read(InputStream input) throws java.io.IOException {
         java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
         byte[] buffer = new byte[8192];
@@ -126,8 +149,8 @@ final class Template {
         for (int i = 0; i < f.length(); i++) {
             if (!Double.isFinite(f.getDouble(i))) throw new IllegalArgumentException(key);
         }
-        if (f.getDouble(0) < 0 || f.getDouble(0) > paper.getWidth() ||
-            f.getDouble(1) < 0 || f.getDouble(1) > paper.getHeight() ||
+        if (f.getDouble(0) < 0 || f.getDouble(0) > paperWidth ||
+            f.getDouble(1) < 0 || f.getDouble(1) > paperHeight ||
             f.getDouble(2) <= 0 || f.getDouble(2) > 500 ||
             f.getDouble(3) <= 0 || f.getDouble(3) > 5 ||
             f.getDouble(4) <= 0 || f.getDouble(4) > 5 ||
@@ -156,6 +179,9 @@ final class Template {
             String title = editedLabels.optString(i, labels.get(i).spec.optString("text"));
             elements.put("label:" + i, title.isEmpty() ? "نوشتهٔ " + (i + 1) : title);
         }
+        if (rules != null) for (int i = 0; i < rules.length(); i++) {
+            elements.put("rule:" + i, "خط یا کادر " + (i + 1));
+        }
         for (int i = 0; i < layout.logos.size(); i++) {
             TemplateLayout.Logo logo = layout.logos.get(i);
             elements.put(logo.id, "لوگو " + (i + 1) + (logo.bitmap == null ? " (تصویر در دسترس نیست)" : ""));
@@ -167,7 +193,7 @@ final class Template {
         RectF area = logoBox != null && logoBox.length() == 4
             ? new RectF((float) logoBox.optDouble(0), (float) logoBox.optDouble(1),
                 (float) logoBox.optDouble(2), (float) logoBox.optDouble(3))
-            : new RectF(12, 12, paper.getWidth() - 12, paper.getHeight() / 8f);
+            : new RectF(12, 12, paperWidth - 12, paperHeight / 8f);
         float scale = Math.min((legacy ? area.width() : area.width() / 3) / bitmap.getWidth(),
             area.height() / bitmap.getHeight());
         float width = bitmap.getWidth() * scale;
@@ -186,12 +212,32 @@ final class Template {
     Bitmap render(String value, String timestamp, String trace, String ref, TemplateLayout layout,
         String note, JSONArray editedLabels, int resolution, java.util.Map<String, RectF> bounds, Bitmap reusable) {
         Bitmap image = reusable == null
-            ? Bitmap.createBitmap(paper.getWidth() * resolution, paper.getHeight() * resolution, Bitmap.Config.ARGB_8888)
+            ? Bitmap.createBitmap(paperWidth * resolution, paperHeight * resolution, Bitmap.Config.ARGB_8888)
             : reusable;
         Canvas canvas = new Canvas(image);
-        canvas.drawColor(Color.WHITE);
         canvas.scale(resolution, resolution);
-        canvas.drawBitmap(paper, 0, 0, null);
+        drawPage(canvas, value, timestamp, trace, ref, layout, note, editedLabels, bounds);
+        return image;
+    }
+
+    void drawPage(Canvas canvas, String value, String timestamp, String trace, String ref, TemplateLayout layout,
+        String note, JSONArray editedLabels, java.util.Map<String, RectF> bounds) {
+        canvas.drawColor(Color.WHITE);
+        canvas.drawBitmap(paper(), 0, 0, null);
+        if (rules != null) {
+            Paint rulePaint = new Paint();
+            rulePaint.setColor(Color.BLACK);
+            for (int i = 0; i < rules.length(); i++) {
+                JSONArray line = rules.optJSONArray(i);
+                if (line == null || line.length() != 4) continue;
+                String key = "rule:" + i;
+                PointF move = layout.offset(key);
+                RectF box = new RectF((float) line.optDouble(0) + move.x, (float) line.optDouble(1) + move.y,
+                    (float) line.optDouble(2) + move.x, (float) line.optDouble(3) + move.y);
+                canvas.drawRect(box, rulePaint);
+                if (bounds != null) bounds.put(key, box);
+            }
+        }
         Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.SUBPIXEL_TEXT_FLAG);
         labelPaint.setTextAlign(Paint.Align.RIGHT);
         for (int i = 0; i < labels.size(); i++) {
@@ -234,9 +280,9 @@ final class Template {
             label.setColor(Color.BLACK);
             label.setTextSize(28);
             label.setTextAlign(Paint.Align.CENTER);
-            float x = noteBox == null ? paper.getWidth() / 2f : (float) noteBox.optDouble(0);
-            float y = noteBox == null ? paper.getHeight() - 70 : (float) noteBox.optDouble(1);
-            float available = 2 * Math.min(x - 24, paper.getWidth() - x - 24);
+            float x = noteBox == null ? paperWidth / 2f : (float) noteBox.optDouble(0);
+            float y = noteBox == null ? paperHeight - 70 : (float) noteBox.optDouble(1);
+            float available = 2 * Math.min(x - 24, paperWidth - x - 24);
             float width = label.measureText(note);
             if (available > 0 && width > available) label.setTextScaleX(available / width);
             PointF move = layout.offset("note");
@@ -270,7 +316,6 @@ final class Template {
             String suffix = styles.get(reference).optString("mode").equals("slash") ? "/" : "";
             draw(canvas, referencePrefix + ref + suffix, reference, "reference", layout, bounds);
         }
-        return image;
     }
 
     private static String localDigits(String text) {
@@ -283,9 +328,9 @@ final class Template {
 
     private void movedWhiteText(Paint paint, PointF move, float x, float baseline) {
         if (paint.getColor() != Color.WHITE || (move.x == 0 && move.y == 0)) return;
-        int column = Math.max(0, Math.min(paper.getWidth() - 1, Math.round(x)));
-        int row = Math.max(0, Math.min(paper.getHeight() - 1, Math.round(baseline + paint.ascent() / 3)));
-        int background = paper.getPixel(column, row);
+        int column = Math.max(0, Math.min(paperWidth - 1, Math.round(x)));
+        int row = Math.max(0, Math.min(paperHeight - 1, Math.round(baseline + paint.ascent() / 3)));
+        int background = paper().getPixel(column, row);
         if (Color.red(background) + Color.green(background) + Color.blue(background) > 420) {
             paint.setColor(Color.BLACK);
         }

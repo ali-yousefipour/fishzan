@@ -4,7 +4,7 @@
         <item name="android:windowBackground">#F4F6F4</item>
         <item name="android:statusBarColor">#173F39</item>
         <item name="android:navigationBarColor">#173F39</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">@font/b_homa</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

@@ -26,5 +26,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: fishzan-android
-          path: dist/fishzan.apk
+          path: |
+            dist/fishzan.apk
+            dist/fishzan-templates.zip
+            dist/fanous-template.zip
           if-no-files-found: error

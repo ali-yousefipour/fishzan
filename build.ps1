@@ -24,6 +24,8 @@ try {
     }
     & "$tools\apksigner.bat" sign --ks $signing --ks-key-alias fishzan --ks-pass pass:android --out dist\fishzan.apk "$work\aligned.apk"
     & "$tools\apksigner.bat" verify --verbose dist\fishzan.apk
+    Compress-Archive -Path 'assets/templates/*' -DestinationPath 'dist/fishzan-templates.zip' -Force
+    Compress-Archive -Path 'assets/templates/fanous/*' -DestinationPath 'dist/fanous-template.zip' -Force
     if (Test-Path -LiteralPath 'dist\fishzan.apk.idsig') {
         Remove-Item -LiteralPath 'dist\fishzan.apk.idsig'
     }

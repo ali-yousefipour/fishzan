@@ -23,9 +23,12 @@ final class PersianDateDialog {
         month.set(Calendar.DAY_OF_MONTH, 1);
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
+        int padding = Math.round(12 * context.getResources().getDisplayMetrics().density);
+        content.setPadding(padding, padding, padding, padding);
         content.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
         AlertDialog dialog = new AlertDialog.Builder(context).setTitle("انتخاب تاریخ شمسی")
-            .setView(content).setNegativeButton("انصراف", null).create();
+            .setView(content).setNegativeButton("انصراف", null)
+            .setNeutralButton("امروز", (ignored, which) -> chosen.accept(calendar())).create();
         render(context, content, month, selected, dialog, chosen);
         dialog.show();
     }
@@ -42,10 +45,12 @@ final class PersianDateDialog {
             month.add(Calendar.MONTH, -1);
             render(context, content, month, selected, dialog, chosen);
         });
-        TextView title = new TextView(context);
+        Button title = new Button(context, null, android.R.attr.borderlessButtonStyle);
         title.setGravity(android.view.Gravity.CENTER);
         title.setText(MONTHS[month.get(Calendar.MONTH)] + " " + digits(month.get(Calendar.YEAR)));
-        header.addView(title, new LinearLayout.LayoutParams(0, -1, 1));
+        header.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        title.setOnClickListener(view -> chooseMonth(context, month,
+            () -> render(context, content, month, selected, dialog, chosen)));
         Button next = new Button(context);
         next.setText("بعدی");
         header.addView(next);
@@ -78,7 +83,13 @@ final class PersianDateDialog {
                 button.setPadding(0, 0, 0, 0);
                 if (selected.get(Calendar.YEAR) == month.get(Calendar.YEAR) &&
                     selected.get(Calendar.MONTH) == month.get(Calendar.MONTH) &&
-                    selected.get(Calendar.DAY_OF_MONTH) == day) button.setTextColor(0xff246456);
+                    selected.get(Calendar.DAY_OF_MONTH) == day) {
+                    android.graphics.drawable.GradientDrawable fill = new android.graphics.drawable.GradientDrawable();
+                    fill.setColor(0xff246456);
+                    fill.setCornerRadius(18);
+                    button.setBackground(fill);
+                    button.setTextColor(android.graphics.Color.WHITE);
+                }
                 week.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
                 button.setOnClickListener(view -> {
                     month.set(Calendar.DAY_OF_MONTH, day);
@@ -87,6 +98,41 @@ final class PersianDateDialog {
                 });
             }
         }
+    }
+
+    private static void chooseMonth(Context context, Calendar month, Runnable redraw) {
+        LinearLayout form = new LinearLayout(context);
+        form.setOrientation(LinearLayout.VERTICAL);
+        form.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_RTL);
+        android.widget.Spinner months = new android.widget.Spinner(context);
+        android.widget.ArrayAdapter<String> options = new android.widget.ArrayAdapter<>(context,
+            android.R.layout.simple_spinner_dropdown_item, MONTHS);
+        months.setAdapter(options);
+        months.setSelection(month.get(Calendar.MONTH));
+        form.addView(months);
+        android.widget.EditText year = new android.widget.EditText(context);
+        year.setSingleLine();
+        year.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        year.setHint("سال شمسی");
+        year.setText(Integer.toString(month.get(Calendar.YEAR)));
+        year.setSelectAllOnFocus(true);
+        form.addView(year);
+        AlertDialog dialog = new AlertDialog.Builder(context).setTitle("ماه و سال")
+            .setView(form).setNegativeButton("انصراف", null).setPositiveButton("نمایش", null).create();
+        dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            int value;
+            try { value = Integer.parseInt(year.getText().toString().trim()); }
+            catch (NumberFormatException e) { value = 0; }
+            if (value < 1000 || value > 1999) {
+                year.setError("سال چهار رقمی وارد کنید.");
+                return;
+            }
+            month.set(Calendar.YEAR, value);
+            month.set(Calendar.MONTH, months.getSelectedItemPosition());
+            redraw.run();
+            dialog.dismiss();
+        });
     }
 
     private static String digits(int value) {
