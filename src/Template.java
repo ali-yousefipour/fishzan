@@ -6,6 +6,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PointF;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import java.io.File;
 import java.io.InputStream;
@@ -142,8 +144,50 @@ final class Template {
         return texts;
     }
 
-    Bitmap render(String value, String timestamp, String trace, String ref, Bitmap logo, String note, JSONArray editedLabels, int resolution) {
-        Bitmap image = Bitmap.createBitmap(paper.getWidth() * resolution, paper.getHeight() * resolution, Bitmap.Config.ARGB_8888);
+    java.util.Map<String, String> elements(JSONArray editedLabels, TemplateLayout layout) {
+        java.util.Map<String, String> elements = new java.util.LinkedHashMap<>();
+        elements.put("amount", "مبلغ");
+        elements.put("date", "تاریخ");
+        if (time != null) elements.put("time", "ساعت");
+        if (tracking != null) elements.put("tracking", "شمارهٔ پیگیری");
+        if (reference != null) elements.put("reference", "شمارهٔ مرجع");
+        elements.put("note", "متن پایین فیش");
+        for (int i = 0; i < labels.size(); i++) {
+            String title = editedLabels.optString(i, labels.get(i).spec.optString("text"));
+            elements.put("label:" + i, title.isEmpty() ? "نوشتهٔ " + (i + 1) : title);
+        }
+        for (int i = 0; i < layout.logos.size(); i++) {
+            TemplateLayout.Logo logo = layout.logos.get(i);
+            elements.put(logo.id, "لوگو " + (i + 1) + (logo.bitmap == null ? " (تصویر در دسترس نیست)" : ""));
+        }
+        return elements;
+    }
+
+    RectF logoPosition(Bitmap bitmap, int index, boolean legacy) {
+        RectF area = logoBox != null && logoBox.length() == 4
+            ? new RectF((float) logoBox.optDouble(0), (float) logoBox.optDouble(1),
+                (float) logoBox.optDouble(2), (float) logoBox.optDouble(3))
+            : new RectF(12, 12, paper.getWidth() - 12, paper.getHeight() / 8f);
+        float scale = Math.min((legacy ? area.width() : area.width() / 3) / bitmap.getWidth(),
+            area.height() / bitmap.getHeight());
+        float width = bitmap.getWidth() * scale;
+        float height = bitmap.getHeight() * scale;
+        float center = legacy ? area.centerX() : area.left + area.width() * ((index % 3) + .5f) / 3;
+        float x = center - width / 2;
+        float y = area.centerY() - height / 2;
+        return new RectF(x, y, x + width, y + height);
+    }
+
+    Bitmap render(String value, String timestamp, String trace, String ref, TemplateLayout layout,
+        String note, JSONArray editedLabels, int resolution) {
+        return render(value, timestamp, trace, ref, layout, note, editedLabels, resolution, null, null);
+    }
+
+    Bitmap render(String value, String timestamp, String trace, String ref, TemplateLayout layout,
+        String note, JSONArray editedLabels, int resolution, java.util.Map<String, RectF> bounds, Bitmap reusable) {
+        Bitmap image = reusable == null
+            ? Bitmap.createBitmap(paper.getWidth() * resolution, paper.getHeight() * resolution, Bitmap.Config.ARGB_8888)
+            : reusable;
         Canvas canvas = new Canvas(image);
         canvas.drawColor(Color.WHITE);
         canvas.scale(resolution, resolution);
@@ -155,7 +199,8 @@ final class Template {
             JSONObject spec = label.spec;
             String text = editedLabels.optString(i, spec.optString("text"));
             if (!spec.optBoolean("latin")) text = localDigits(text);
-            if (text.isEmpty()) continue;
+            if (text.isEmpty() && bounds == null) continue;
+            if (text.isEmpty()) text = spec.optString("text");
             labelPaint.setTypeface(label.font);
             labelPaint.setColor(spec.optBoolean("white") ? Color.WHITE : Color.BLACK);
             labelPaint.setTextSize((float) spec.optDouble("size"));
@@ -165,23 +210,26 @@ final class Template {
             float textWidth = labelPaint.measureText(text);
             if (textWidth > 0) {
                 labelPaint.setTextScaleX(Math.min((float) spec.optDouble("scale"), (right - left) / textWidth));
-                canvas.drawText(text, right, (float) spec.optDouble("baseline"), labelPaint);
+                String key = "label:" + i;
+                PointF move = layout.offset(key);
+                float baseline = (float) spec.optDouble("baseline") + move.y;
+                right += move.x;
+                movedWhiteText(labelPaint, move, right - labelPaint.measureText(text) / 2, baseline);
+                canvas.drawText(text, right, baseline, labelPaint);
+                textBounds(bounds, key, right - labelPaint.measureText(text), right, baseline, labelPaint);
             }
         }
-        if (logo != null && logoBox != null && logoBox.length() == 4) {
-            float left = (float) logoBox.optDouble(0);
-            float top = (float) logoBox.optDouble(1);
-            float right = (float) logoBox.optDouble(2);
-            float bottom = (float) logoBox.optDouble(3);
-            float scale = Math.min((right - left) / logo.getWidth(), (bottom - top) / logo.getHeight());
-            float width = logo.getWidth() * scale;
-            float height = logo.getHeight() * scale;
-            float x = (left + right - width) / 2;
-            float y = (top + bottom - height) / 2;
-            canvas.drawBitmap(logo, null, new android.graphics.RectF(x, y, x + width, y + height),
-                new Paint(Paint.FILTER_BITMAP_FLAG));
+        Paint logoPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+        for (TemplateLayout.Logo logo : layout.logos) {
+            PointF move = layout.offset(logo.id);
+            float x = logo.x + move.x;
+            float y = logo.y + move.y;
+            RectF area = new RectF(x, y, x + logo.width, y + logo.height);
+            if (logo.bitmap != null) canvas.drawBitmap(logo.bitmap, null, area, logoPaint);
+            if (bounds != null) bounds.put(logo.id, area);
         }
-        if (!note.isEmpty()) {
+        if (!note.isEmpty() || bounds != null) {
+            if (note.isEmpty()) note = "متن پایین فیش";
             Paint label = new Paint(Paint.ANTI_ALIAS_FLAG);
             label.setColor(Color.BLACK);
             label.setTextSize(28);
@@ -191,13 +239,18 @@ final class Template {
             float available = 2 * Math.min(x - 24, paper.getWidth() - x - 24);
             float width = label.measureText(note);
             if (available > 0 && width > available) label.setTextScaleX(available / width);
+            PointF move = layout.offset("note");
+            x += move.x;
+            y += move.y;
             canvas.drawText(note, x, y, label);
+            float halfWidth = label.measureText(note) / 2;
+            textBounds(bounds, "note", x - halfWidth, x + halfWidth, y, label);
         }
         if (!value.isEmpty()) {
             String grouped = String.format(Locale.US, "%,d", Long.parseLong(value));
             String mode = styles.get(amount).optString("mode", "suffix");
             if (!mode.equals("comma")) grouped = grouped.replace(',', '،');
-            draw(canvas, mode.equals("suffix") ? grouped + "/--" : grouped, amount);
+            draw(canvas, mode.equals("suffix") ? grouped + "/--" : grouped, amount, "amount", layout, bounds);
         }
         if (!timestamp.isEmpty()) {
             String[] parts = timestamp.split(" ");
@@ -209,13 +262,13 @@ final class Template {
             else if (mode.equals("full-dash")) dateText = fullDate + " -- " + parts[1];
             else if (time != null) dateText = mode.equals("full-date") ? fullDate : shortDate;
             else dateText = shortDate + " " + parts[1];
-            draw(canvas, dateText, date);
-            draw(canvas, parts[1], time);
+            draw(canvas, dateText, date, "date", layout, bounds);
+            draw(canvas, parts[1], time, "time", layout, bounds);
         }
-        draw(canvas, trace, tracking);
+        draw(canvas, trace, tracking, "tracking", layout, bounds);
         if (!ref.isEmpty() && reference != null) {
             String suffix = styles.get(reference).optString("mode").equals("slash") ? "/" : "";
-            draw(canvas, referencePrefix + ref + suffix, reference);
+            draw(canvas, referencePrefix + ref + suffix, reference, "reference", layout, bounds);
         }
         return image;
     }
@@ -228,7 +281,24 @@ final class Template {
         return value.toString();
     }
 
-    private void draw(Canvas canvas, String text, JSONArray field) {
+    private void movedWhiteText(Paint paint, PointF move, float x, float baseline) {
+        if (paint.getColor() != Color.WHITE || (move.x == 0 && move.y == 0)) return;
+        int column = Math.max(0, Math.min(paper.getWidth() - 1, Math.round(x)));
+        int row = Math.max(0, Math.min(paper.getHeight() - 1, Math.round(baseline + paint.ascent() / 3)));
+        int background = paper.getPixel(column, row);
+        if (Color.red(background) + Color.green(background) + Color.blue(background) > 420) {
+            paint.setColor(Color.BLACK);
+        }
+    }
+
+    private void textBounds(java.util.Map<String, RectF> bounds, String key, float left, float right,
+        float baseline, Paint paint) {
+        if (bounds != null) bounds.put(key, new RectF(left, baseline + paint.ascent(),
+            right, baseline + paint.descent()));
+    }
+
+    private void draw(Canvas canvas, String text, JSONArray field, String key, TemplateLayout layout,
+        java.util.Map<String, RectF> bounds) {
         if (field == null || text.isEmpty()) return;
         JSONObject style = styles.get(field);
         boolean latin = style.optBoolean("latin");
@@ -243,11 +313,21 @@ final class Template {
         float spacing = (float) field.optDouble(5) * paint.getTextSize() / 1000;
         float width = spacing * (persian.length() - 1);
         for (int i = 0; i < persian.length(); i++) width += paint.measureText(persian.substring(i, i + 1));
-        if (field == amount && field.optDouble(0) - width * field.optDouble(3) < amountLeft) {
+        if (bounds == null && field == amount && field.optDouble(0) - width * field.optDouble(3) < amountLeft) {
             throw new IllegalArgumentException("مبلغ در فضای تعیین‌شدهٔ این قالب جا نمی‌شود.");
         }
+        PointF move = layout.offset(key);
+        float right = (float) field.optDouble(0) + move.x;
+        float baseline = (float) field.optDouble(1) + move.y;
+        if (bounds != null) {
+            float sx = (float) field.optDouble(3);
+            float sy = (float) field.optDouble(4);
+            bounds.put(key, new RectF(right - width * sx, baseline + paint.ascent() * sy,
+                right, baseline + paint.descent() * sy));
+        }
+        movedWhiteText(paint, move, right - width * (float) field.optDouble(3) / 2, baseline);
         canvas.save();
-        canvas.translate((float) field.optDouble(0), (float) field.optDouble(1));
+        canvas.translate(right, baseline);
         canvas.scale((float) field.optDouble(3), (float) field.optDouble(4));
         float x = -width;
         for (int i = 0; i < persian.length(); i++) {

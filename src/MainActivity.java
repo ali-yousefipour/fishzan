@@ -43,7 +43,10 @@ public final class MainActivity extends Activity {
     private ImageView preview;
     private TextView status, trackingLabel, referenceLabel;
     private Button print;
-    private Bitmap receipt, logo;
+    private Bitmap receipt;
+    private TemplateLayout activeLayout;
+    private LayoutEditor layoutEditor;
+    private final java.util.Map<Uri, Bitmap> loadedLogos = new java.util.HashMap<>();
     private Calendar selectedDate = PersianDateDialog.calendar();
     private Button dateButton, timeButton;
     private final List<String> templateIds = new ArrayList<>();
@@ -83,23 +86,7 @@ public final class MainActivity extends Activity {
             startActivityForResult(intent, 1);
         });
         button(templateActions, "ویرایش قالب", this::editTemplate);
-        LinearLayout logoActions = row(layout);
-        button(logoActions, "انتخاب لوگوی فروشگاه", () -> {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.setType("image/*");
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, 2);
-        });
-        button(logoActions, "حذف لوگو", () -> {
-            logo = null;
-            getPreferences(MODE_PRIVATE).edit().remove("storeLogo").apply();
-            refresh();
-        });
-        String savedLogo = getPreferences(MODE_PRIVATE).getString("storeLogo", "");
-        if (!savedLogo.isEmpty()) {
-            try { logo = readLogo(Uri.parse(savedLogo)); }
-            catch (java.io.IOException | SecurityException ignored) {}
-        }
+        button(layout, "چیدمان و لوگوهای قالب", this::editLayout);
         label(layout, "مبلغ به ریال").setPadding(0, dp(20), 0, 0);
         amount = input(layout, "مثلاً ۲۰۷۵۰۰۰۰", InputType.TYPE_CLASS_NUMBER, 12);
         label(layout, "تاریخ شمسی و ساعت");
@@ -176,12 +163,18 @@ public final class MainActivity extends Activity {
             }
             picker.setSelection(index);
             select(index);
+            String draft = state == null ? null : state.getString("layoutDraft");
+            if (draft != null) showLayoutEditor(index, new TemplateLayout(draft, this::loadLogo));
         }
     }
 
     @Override protected void onSaveInstanceState(Bundle state) {
         super.onSaveInstanceState(state);
         state.putInt("selection", Math.max(0, selection));
+        if (layoutEditor != null) {
+            try { state.putString("layoutDraft", layoutEditor.layout().json()); }
+            catch (JSONException ignored) {}
+        }
         state.putString("amount", amount.getText().toString());
         state.putLong("selectedDate", selectedDate.getTimeInMillis());
         state.putString("tracking", tracking.getText().toString());
@@ -320,8 +313,61 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private TemplateLayout loadLayout(int index) {
+        String key = templateIds.get(index) + ":layout";
+        String json = getPreferences(MODE_PRIVATE).getString(key, "");
+        if (!json.isEmpty()) return new TemplateLayout(json, this::loadLogo);
+        TemplateLayout layout = new TemplateLayout();
+        String legacy = getPreferences(MODE_PRIVATE).getString("storeLogo", "");
+        if (!legacy.isEmpty()) {
+            Uri uri = Uri.parse(legacy);
+            try {
+                Bitmap bitmap = loadLogo(uri);
+                layout.addLogo(uri, bitmap, templates.get(index).logoPosition(bitmap, 0, true));
+            } catch (java.io.IOException | SecurityException ignored) {}
+        }
+        return layout;
+    }
+
+    private void editLayout() {
+        if (selection < 0) return;
+        showLayoutEditor(selection, loadLayout(selection));
+    }
+
+    private void showLayoutEditor(int index, TemplateLayout draft) {
+        layoutEditor = new LayoutEditor(this, templates.get(index), draft,
+            templateLabels(), templateNote(), () -> {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("image/*");
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                startActivityForResult(intent, 2);
+            }, () -> {
+                try {
+                    TemplateLayout edited = layoutEditor.layout();
+                    getPreferences(MODE_PRIVATE).edit()
+                        .putString(templateIds.get(index) + ":layout", edited.json()).apply();
+                    activeLayout = edited;
+                    layoutEditor.dismiss();
+                    refresh();
+                } catch (JSONException e) {
+                    Toast.makeText(this, "ذخیرهٔ چیدمان ممکن نبود.", Toast.LENGTH_LONG).show();
+                }
+            }, () -> layoutEditor = null);
+    }
+
+    private Bitmap loadLogo(Uri uri) throws java.io.IOException {
+        Bitmap bitmap = loadedLogos.get(uri);
+        if (bitmap == null) {
+            bitmap = readLogo(uri);
+            if (loadedLogos.size() >= 12) loadedLogos.clear();
+            loadedLogos.put(uri, bitmap);
+        }
+        return bitmap;
+    }
+
     private void select(int index) {
         Template template = templates.get(index);
+        if (selection != index || activeLayout == null) activeLayout = loadLayout(index);
         selection = index;
         showNumber(trackingLabel, tracking, template.tracking);
         showNumber(referenceLabel, reference, template.reference);
@@ -367,12 +413,12 @@ public final class MainActivity extends Activity {
             !ref.isEmpty() && !validRef ? String.format("شمارهٔ مرجع باید %d رقم باشد.", refLength) : "";
         try {
             receipt = template.render(validAmount ? money : "", validDate ? timestamp : "",
-                validTrace ? trace : "", validRef ? ref : "", logo, templateNote(), templateLabels(), 1);
+                validTrace ? trace : "", validRef ? ref : "", activeLayout, templateNote(), templateLabels(), 1);
         } catch (IllegalArgumentException e) {
             warning = e.getMessage();
             validAmount = false;
             receipt = template.render("", validDate ? timestamp : "",
-                validTrace ? trace : "", validRef ? ref : "", logo, templateNote(), templateLabels(), 1);
+                validTrace ? trace : "", validRef ? ref : "", activeLayout, templateNote(), templateLabels(), 1);
         }
         preview.setImageBitmap(receipt);
         status.setText(warning);
@@ -390,7 +436,7 @@ public final class MainActivity extends Activity {
             .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
             .build();
         manager.print("فیش " + template.name, new ReceiptPrint(template.render(ascii(amount.getText().toString()), date.getText().toString(),
-            ascii(tracking.getText().toString()), ascii(reference.getText().toString()), logo, templateNote(), templateLabels(), 2), template), attributes);
+            ascii(tracking.getText().toString()), ascii(reference.getText().toString()), activeLayout, templateNote(), templateLabels(), 2), template), attributes);
     }
 
     private Bitmap readLogo(Uri uri) throws java.io.IOException {
@@ -401,7 +447,7 @@ public final class MainActivity extends Activity {
         }
         options.inJustDecodeBounds = false;
         options.inSampleSize = 1;
-        while (Math.max(options.outWidth, options.outHeight) / options.inSampleSize > 1024) {
+        while (Math.max(options.outWidth, options.outHeight) / options.inSampleSize > 512) {
             options.inSampleSize *= 2;
         }
         try (InputStream in = getContentResolver().openInputStream(uri)) {
@@ -415,13 +461,12 @@ public final class MainActivity extends Activity {
         super.onActivityResult(request, result, data);
         if (result != RESULT_OK || data == null || data.getData() == null) return;
         if (request == 2) {
+            if (layoutEditor == null) return;
             Uri uri = data.getData();
             try {
-                Bitmap selected = readLogo(uri);
+                Bitmap selected = loadLogo(uri);
                 getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                logo = selected;
-                getPreferences(MODE_PRIVATE).edit().putString("storeLogo", uri.toString()).apply();
-                refresh();
+                layoutEditor.addLogo(uri, selected);
             } catch (java.io.IOException | SecurityException e) {
                 Toast.makeText(this, "باز کردن تصویر لوگو ممکن نبود.", Toast.LENGTH_LONG).show();
             }
