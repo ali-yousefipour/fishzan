@@ -56,7 +56,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        homa = Typeface.createFromAsset(getAssets(), "templates/fanous/BHoma.ttf");
+        homa = AppFonts.interfaceFont(this);
         archive = new ReceiptArchive(this);
         if (state != null) {
             String pending = state.getString("pendingPdf", "");
@@ -141,8 +141,7 @@ public final class MainActivity extends Activity {
         credit.setPadding(0, dp(16), 0, dp(8));
 
         try {
-            String[] assets = getAssets().list("templates");
-            if (assets != null) for (String name : assets) {
+            for (String name : BundledAssets.templateFolders(this)) {
                 try {
                     add(new Template(this, "templates/" + name, null), "asset:" + name);
                 } catch (Exception e) {
@@ -818,7 +817,7 @@ public final class MainActivity extends Activity {
             if (!java.util.Arrays.asList(LOGO_FILES).contains(filename)) {
                 throw new java.io.IOException("unknown built-in logo");
             }
-            try (InputStream input = getAssets().open("logos/" + filename)) {
+            try (InputStream input = BundledAssets.open(this, "logos/" + filename)) {
                 Bitmap bitmap = BitmapFactory.decodeStream(input);
                 if (bitmap == null) throw new java.io.IOException("built-in logo");
                 return bitmap;
@@ -934,4 +933,3 @@ public final class MainActivity extends Activity {
         }
     }
 }
-

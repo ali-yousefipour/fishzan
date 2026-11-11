@@ -83,6 +83,7 @@ final class Template {
         terminalSuffix = data.optString("terminalSuffix");
         referencePrefix = data.optString("referencePrefix");
         JSONObject styleMap = data.optJSONObject("styles");
+        java.util.Map<String, Typeface> loadedFonts = new java.util.HashMap<>();
         for (String key : new String[]{"amount", "date", "time", "tracking", "reference"}) {
             if (!fields.has(key)) continue;
             JSONArray slot = fields.getJSONArray(key);
@@ -90,9 +91,9 @@ final class Template {
             if (style == null) style = new JSONObject();
             String file = style.optString("font", "font.ttf");
             if (!file.matches("[A-Za-z0-9_-]+[.]ttf")) throw new IllegalArgumentException("font");
-            Typeface typeface = dir == null
-                ? Typeface.createFromAsset(context.getAssets(), asset + "/" + file)
-                : Typeface.createFromFile(new File(dir, file));
+            Typeface typeface = loadedFonts.computeIfAbsent(file, filename -> dir == null
+                ? AppFonts.bundled(context, asset + "/" + filename, Typeface.DEFAULT)
+                : Typeface.createFromFile(new File(dir, filename)));
             fonts.put(slot, typeface);
             styles.put(slot, style);
         }
@@ -103,9 +104,9 @@ final class Template {
                 JSONObject spec = labelsData.getJSONObject(i);
                 String file = spec.getString("font");
                 if (!file.matches("[A-Za-z0-9_-]+[.]ttf")) throw new IllegalArgumentException("font");
-                Typeface typeface = dir == null
-                    ? Typeface.createFromAsset(context.getAssets(), asset + "/" + file)
-                    : Typeface.createFromFile(new File(dir, file));
+                Typeface typeface = loadedFonts.computeIfAbsent(file, filename -> dir == null
+                ? AppFonts.bundled(context, asset + "/" + filename, Typeface.DEFAULT)
+                : Typeface.createFromFile(new File(dir, filename)));
                 labels.add(new PrintedLabel(spec, typeface));
             }
         }
@@ -137,7 +138,7 @@ final class Template {
     }
 
     private InputStream open(Context context, String asset, File dir, String name) throws Exception {
-        return dir == null ? context.getAssets().open(asset + "/" + name)
+        return dir == null ? BundledAssets.open(context, asset + "/" + name)
                            : new java.io.FileInputStream(new File(dir, name));
     }
 

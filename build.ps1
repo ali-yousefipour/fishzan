@@ -12,9 +12,9 @@ try {
     & jar cf "$work\classes.jar" -C "$work\classes" .
     & "$tools\d8.bat" --min-api 24 --lib $android --output "$work\dex" "$work\classes.jar"
     & "$tools\aapt2.exe" compile --dir res -o "$work\resources.zip"
-    & "$tools\aapt2.exe" link -I $android --manifest AndroidManifest.xml -A assets -o "$work\unsigned.apk" "$work\resources.zip"
+    & "$tools\aapt2.exe" link -I $android --manifest AndroidManifest.xml -0 ttf -A assets -o "$work\unsigned.apk" "$work\resources.zip"
     Push-Location "$work\dex"
-    try { & jar uf "$work\unsigned.apk" classes.dex }
+    try { & jar uf0 "$work\unsigned.apk" classes.dex }
     finally { Pop-Location }
     & "$tools\zipalign.exe" -f 4 "$work\unsigned.apk" "$work\aligned.apk"
     $signing = Join-Path $env:USERPROFILE '.android\fishzan-debug.jks'
